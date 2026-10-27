@@ -595,6 +595,10 @@ async function logout() {
  * Deskripsi: Merender kerangka tata letak utama (bilah sisi, header), 
  *            mengatur ikon pengguna, dan mengontrol pindah halaman.
  * ========================================================================== */
+
+/* ==========================================================================
+ * KELOMPOK ANTARMUKA UTAMA & NAVIGASI (F22 - F28)
+ * ========================================================================== */
 function navItem(route, text, icon, extra = '') {
   return `<button type="button" class="nav-item" data-action="navigate" data-route="${route}" ${extra}>
     <span class="nav-icon" aria-hidden="true">${icon}</span>${escapeHTML(text)}</button>`;
@@ -616,6 +620,7 @@ function renderShell() {
     ${navItem('users', 'Manajemen pengguna', '♙')}
     ${navItem('settings', 'Pengaturan AI & kuota', '⚙')}
     ${navItem('logs', 'Log aktivitas', '≡')}` : '';
+  
   $('#app').innerHTML = `
     <button class="backdrop" type="button" data-action="close-menu" aria-label="Tutup menu"></button>
     <aside class="sidebar" aria-label="Menu utama">
@@ -644,7 +649,8 @@ function renderShell() {
       </nav>
       <div class="sidebar-footer">Hasil AI adalah draf. Tinjau kembali isi dan rujukan sebelum digunakan.</div>
     </aside>
-    <main class="main">
+    
+    <main class="main" style="display: flex; flex-direction: column; min-height: 100vh;">
       <header class="topbar">
         <div class="row">
           ${button('☰', 'toggle-menu', 'aria-label="Buka menu"', 'btn-outline btn-icon mobile-only')}
@@ -655,7 +661,34 @@ function renderShell() {
           <div class="user-label"><span>${escapeHTML(user.name)}</span><small>${user.role === 'admin' ? 'Administrator' : 'Guru'}</small></div>
         </div>
       </header>
-      <div class="content" id="content" tabindex="-1"></div>
+      
+      <div class="content" id="content" tabindex="-1" style="flex: 1;"></div>
+      
+      <div style="margin-top: auto; padding-top: 48px;">
+        <footer style="padding: 24px 32px; border-top: 1px solid rgba(128, 128, 128, 0.15); background-color: rgba(128, 128, 128, 0.02); color: var(--muted-color, #64748b); font-size: 0.85rem;">
+          <div style="display: flex; flex-wrap: wrap; justify-content: center; align-items: center; max-width: 1200px; margin: 0 auto; gap: 28px;">
+            
+            <div style="display: flex; align-items: center; gap: 10px;">
+               <span style="display: inline-block; width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);" title="Sistem Aktif"></span>
+               <span style="font-weight: 600; color: var(--text-color, #1e293b); letter-spacing: 0.3px;">EduPlan AI</span>
+               <span>&copy; ${new Date().getFullYear()}</span>
+            </div>
+            
+            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+               <!-- Badge Versi dihapus sesuai permintaan -->
+               
+               <span style="display: flex; align-items: center; gap: 6px;">
+                 Dirancang oleh 
+                 <a href="https://www.tiktok.com/@putramadasa" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color, #4f46e5); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: opacity 0.2s;">
+                   Arom Kobama
+                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                 </a>
+               </span>
+            </div>
+            
+          </div>
+        </footer>
+      </div>
     </main>`;
 }
 
