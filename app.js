@@ -965,7 +965,9 @@ function downloadBlob(blob, name) {
   setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
-/* F41: MESIN UTAMA EKSPOR PDF DAN WORD RESMI */
+/* -----------------------------------------------------------------
+ * F41 | exportDocument (Optimasi Ekspor - Rapi Layaknya Google Docs)
+ * ----------------------------------------------------------------- */
 async function exportDocument(format) {
   await run(async () => {
     if (state.dirty) await persistEditor();
@@ -979,7 +981,28 @@ async function exportDocument(format) {
       return;
     }
 
+    // 1. SOLUSI LOGO: Word memblokir Base64 (silang merah), jadi khusus MS Word kita gunakan URL Asli.
+    // Catatan: Jika dibuka di localhost tanpa koneksi internet, logo di Word tetap tidak muncul 
+    // sampai aplikasi ini di-hosting secara online (seperti di GitHub Pages).
     const logoUrl = window.location.origin + '/asset/logo.png';
+    let logoBase64 = logoUrl; 
+    
+    // Hanya gunakan Base64 untuk cetak PDF agar aman di HP
+    if (format === 'pdf') {
+      try {
+        const response = await fetch(logoUrl);
+        const blob = await response.blob();
+        logoBase64 = await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn("Logo Base64 gagal, menggunakan URL normal.");
+      }
+    }
+
+    const finalLogo = format === 'pdf' ? logoBase64 : logoUrl;
     const schoolName = escapeHTML(state.user.school || 'TK - RA DARUSSALAM'); 
     const userEmail = escapeHTML(state.user.email || 'aromwebapp@gmail.com');
 
@@ -989,7 +1012,7 @@ async function exportDocument(format) {
     let isHeaderRow = true;
     let skipSignatureLines = false; 
     let inKvTable = false; 
-    let forcePageBreak = false; // Memaksa halaman baru (misal: setelah TTD)
+    let forcePageBreak = false; 
 
     for (let row of rows) {
       let tRow = row.trim();
@@ -997,19 +1020,19 @@ async function exportDocument(format) {
       if (tRow === '---' || tRow === '***' || tRow === '___' || tRow.startsWith('$')) continue;
 
       if (skipSignatureLines) {
-        if (tRow.match(/Kepala|NIP|Guru|Pelajaran|____|\.\.\.\.|\[Nama/i) || tRow === '') {
+        if (tRow.match(/Kepala|NIP|Guru|Pelajaran|____|\.\.\.\.|\[Nama/i) || tRow.match(/^[\W_]+$/) || tRow === '') {
           continue; 
         } else {
           skipSignatureLines = false; 
         }
       }
 
-      // Deteksi & Pembuatan Tanda Tangan
       if (tRow.match(/^Mengetahui,?/i)) {
         skipSignatureLines = true;
         forcePageBreak = true; 
+        // Perbaikan Tabel TTD: border="0" agar Word tidak memunculkan garis putus-putus
         htmlRows.push(`
-          <table width="100%" style="width: 100%; border: none; margin-top: 30px; margin-bottom: 20px; border-collapse: collapse; page-break-inside: avoid;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border: none; margin-top: 30px; margin-bottom: 20px; border-collapse: collapse; page-break-inside: avoid;">
             <tr>
               <td width="50%" style="width: 50%; text-align: center; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; line-height: 1.5;">
                 Mengetahui,<br>
@@ -1031,16 +1054,16 @@ async function exportDocument(format) {
         continue;
       }
 
-      // Deteksi Tabel Standar
       if (tRow.startsWith('|') && tRow.endsWith('|')) {
         if (tRow.match(/^\|[\s\-\:]+\|/)) continue;
         if (!inTable) {
-          htmlRows.push('<table width="100%" style="width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px;" border="1">');
+          // Perbaikan Tabel Data: Atribut border="1" murni untuk Word
+          htmlRows.push('<table width="100%" border="1" cellspacing="0" cellpadding="4" style="width: 100%; border-collapse: collapse; border: 1pt solid black; margin-top: 10px; margin-bottom: 15px;">');
           inTable = true;
           isHeaderRow = true;
         }
         
-        let cells = tRow.split('|').slice(1, -1);
+let cells = tRow.split('|').slice(1, -1);
         let rowHtml = '<tr>' + cells.map((c) => {
           let cellContent = escapeHTML(c.trim())
             .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
@@ -1048,115 +1071,146 @@ async function exportDocument(format) {
           if (!cellContent || cellContent === '---') cellContent = '&nbsp;';
           let tag = isHeaderRow ? 'th' : 'td';
           let style = tag === 'th' 
-            ? 'padding: 6px 8px; border: 1px solid black; background-color: #f2f2f2; text-align: left; font-weight: bold; font-size: 11pt; vertical-align: middle; font-family: \'Times New Roman\', Times, serif;' 
-            : 'padding: 6px 8px; border: 1px solid black; font-size: 11pt; vertical-align: top; text-align: left; font-family: \'Times New Roman\', Times, serif;';
+            ? 'padding: 6px 8px; border: 1pt solid black; background-color: #f2f2f2; text-align: left; font-weight: bold; font-size: 11pt; vertical-align: middle; font-family: \'Times New Roman\', Times, serif;' 
+            : 'padding: 6px 8px; border: 1pt solid black; font-size: 11pt; vertical-align: top; text-align: left; font-family: \'Times New Roman\', Times, serif;';
           return `<${tag} style="${style}">${cellContent}</${tag}>`;
         }).join('') + '</tr>';
 
-        htmlRows.push(rowHtml);
-        isHeaderRow = false;
+        // [PERBAIKAN] Tambahkan thead dan tbody agar header tabel otomatis berulang di halaman baru
+        if (isHeaderRow) {
+          htmlRows.push('<thead>' + rowHtml + '</thead><tbody>');
+          isHeaderRow = false;
+        } else {
+          htmlRows.push(rowHtml);
+        }
 
       } else {
         if (inTable) {
-          htmlRows.push('</table>');
+          htmlRows.push('</tbody></table>'); // Tutup tbody
           inTable = false;
           isHeaderRow = true;
         }
 
-        let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
+       let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
+        
+        // [PERBAIKAN FINAL] Hapus tanda > yang menempel setelah bullet/angka SEBELUM diconvert ke HTML
+        cleanRow = cleanRow.replace(/^([0-9]+\.|[a-z][\.\)]|\-|\*)\s*>\s*/i, '$1 ');
+
         let kvMatch = cleanRow.match(/^[\-\*\>]\s*(?:>\s*)?(?:\*\*)?([^:\*]{2,50})(?:\*\*)?\s*:\s*(.+)$/i);
         
-        // Deteksi Kolom Identitas Cerdas (Key-Value)
+        // 2. SOLUSI BINGKAI IDENTITAS: Dibungkus dengan DIV Box, lalu isi kolom tanpa border. 
+        // Ini adalah satu-satunya cara agar MS Word membuat bingkai penuh tanpa garis putus-putus di dalamnya.
+      // [PERBAIKAN] Bungkus menggunakan Tabel 1x1 agar MS Word tidak membelah bingkai
         if (kvMatch && !cleanRow.includes('|')) {
             if (!inKvTable) {
-                htmlRows.push('<table width="100%" style="width: 100%; border: none; border-collapse: collapse; margin-bottom: 12px; margin-top: 5px;">');
+                htmlRows.push(`
+                  <table width="100%" border="1" cellspacing="0" cellpadding="0" style="width: 100%; border-collapse: collapse; border: 1pt solid black; margin-top: 5px; margin-bottom: 15px;">
+                    <tr style="page-break-inside: avoid;">
+                      <td style="padding: 6px 10px; border: 1pt solid black; vertical-align: top;">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border: none; border-collapse: collapse;">
+                `);
                 inKvTable = true;
             }
+			
             let key = escapeHTML(kvMatch[1].trim());
             let val = escapeHTML(kvMatch[2].trim())
                 .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
                 .replace(/\*(.*?)\*/g, '<i>$1</i>');
                 
             htmlRows.push(`
-              <tr>
-                <td width="25%" style="width: 25%; padding: 2px 0; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; font-weight: bold;">${key}</td>
-                <td width="3%" style="width: 3%; padding: 2px 0; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; text-align: center;">:</td>
-                <td width="72%" style="width: 72%; padding: 2px 0; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; text-align: justify; line-height: 1.5;">${val}</td>
-              </tr>
+                      <tr>
+                        <td width="26%" style="width: 26%; padding: 2px 4px; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top;">${key}</td>
+                        <td width="3%" style="width: 3%; padding: 2px 0; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; text-align: center;">:</td>
+                        <td width="71%" style="width: 71%; padding: 2px 4px; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; text-align: justify; line-height: 1.5;">${val}</td>
+                      </tr>
             `);
             continue; 
-        } else {
+        
+		} else {
             if (inKvTable) {
-                htmlRows.push('</table>');
+                htmlRows.push(`
+                        </table>
+                      </td>
+                    </tr>
+                  </table>
+                `);
                 inKvTable = false;
             }
         }
 
-        let formattedRow = escapeHTML(cleanRow)
-            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-            .replace(/\*(.*?)\*/g, '<i>$1</i>');
 
-        let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
+let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
 
-        // Styling Paragraf Berdasarkan Jenis Teks
         if (cleanRow.match(/^([A-Z]|[IVX]+)\.\s+/) || cleanRow.match(/^(LAMPIRAN|ASESMEN|RUBRIK|KISI-KISI|LEMBAR KERJA)/i)) {
           let pageBreakHtml = '';
           if (forcePageBreak || cleanRow.match(/^(LAMPIRAN|ASESMEN|RUBRIK|KISI-KISI|LEMBAR KERJA)/i)) {
             pageBreakHtml = '<div style="page-break-before: always;"></div>';
             forcePageBreak = false; 
           }
+          let formattedRow = escapeHTML(cleanRow).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
           htmlRows.push(`${pageBreakHtml}<h3 style="margin-top: 16px; margin-bottom: 8px; font-size: 12pt; font-weight: bold; font-family: 'Times New Roman', Times, serif; text-align: left; text-transform: uppercase;">${formattedRow}</h3>`);
         
         } else if (listMatch) {
           let marker = listMatch[0].trim(); 
           if (marker === '-' || marker === '*') marker = '&#8226;'; 
-          let listText = formattedRow.substring(listMatch[0].length).trim(); 
+          
+          // [SOLUSI FINAL] Ambil teks aslinya dulu, bersihkan sisa '>', BARU di-convert ke HTML
+          let rawListText = cleanRow.substring(listMatch[0].length).trim();
+          rawListText = rawListText.replace(/^>\s*/, '');
+          
+          let listText = escapeHTML(rawListText).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
+          
           htmlRows.push(`<div style="margin-left: 28px; text-indent: -28px; margin-bottom: 4px; text-align: justify; font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${marker}&nbsp;&nbsp;${listText}</div>`);
+        
         } else if (cleanRow === '') {
           htmlRows.push('<div style="height: 8px;"></div>');
         } else {
+          let formattedRow = escapeHTML(cleanRow).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
           let isAllCaps = cleanRow === cleanRow.toUpperCase() && cleanRow.match(/[A-Z]/);
           let pStyle = isAllCaps 
             ? 'margin-top: 12px; margin-bottom: 12px; text-align: center; font-weight: bold;'
             : 'margin-bottom: 6px; text-align: justify;'; 
           htmlRows.push(`<div style="${pStyle} font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${formattedRow}</div>`);
         }
+
+
       }
     }
     if (inTable) htmlRows.push('</table>');
-    if (inKvTable) htmlRows.push('</table>'); 
+    if (inKvTable) htmlRows.push('</table></div>'); 
 
     const processedHTML = htmlRows.join('\n');
 
-    // Desain Kop Surat Resmi
+    // 3. SOLUSI KOP SURAT: Menggunakan border tebal pada DIV agar dibaca sempurna oleh Word
     const kopSurat = `
-      <table width="100%" style="width: 100%; margin-bottom: 0px; border-collapse: collapse; border: none;">
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; margin-bottom: 0px; border-collapse: collapse; border: none;">
         <tr>
           <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none;">
-            <img src="${logoUrl}" width="90" height="90" alt="Logo" style="width: 90px; height: 90px; display: block; margin: 0 auto;">
+            <img src="${finalLogo}" width="90" height="90" alt="Logo" style="width: 90px; height: 90px; display: block; margin: 0 auto;">
           </td>
           <td width="85%" style="width: 85%; text-align: center; vertical-align: middle; border: none; line-height: 1.2;">
-            <div style="font-size: 18pt; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-transform: uppercase;">${schoolName}</div>
-            <div style="font-size: 11pt; font-family: 'Times New Roman', Times, serif;">Bandang Laok, Kokop, Bangkalan, Madura 69155</div>
-            <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif;">HP : 087846666636 | E-mail : ${userEmail}</div>
-            <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif;">Website : www.moljeh.web.id</div>
+            <div style="font-size: 16pt; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-transform: uppercase;">PEMERINTAH PROVINSI / KABUPATEN<br>${schoolName}</div>
+            <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; margin-top: 4px;">Alamat : Jalan Pendidikan No. 7, Bangkalan, Madura 69155<br>Kontak : 087846666636, E-mail : ${userEmail}</div>
           </td>
         </tr>
       </table>
-      <hr size="3" color="black" style="background-color: black; color: black; height: 3px; border: none; margin-top: 10px; margin-bottom: 2px; padding: 0;" />
-      <hr size="1" color="black" style="background-color: black; color: black; height: 1px; border: none; margin-top: 0px; margin-bottom: 20px; padding: 0;" />
+      
+      <div style="border-bottom: 3pt solid black; margin-top: 10px; margin-bottom: 2px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
+      <div style="border-bottom: 1pt solid black; margin-bottom: 20px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
+      
       <div style="text-align: center; margin-bottom: 20px;">
         <h2 style="margin: 0 0 5px 0; font-size: 14pt; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; font-weight: bold;">${escapeHTML(docTitle)}</h2>
         <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; color: #555; text-transform: uppercase;">DRAF UNTUK DITINJAU GURU</div>
       </div>
     `;
 
-    // Perakitan HTML Akhir
+    // 4. SOLUSI XML (mso): Memberitahu MS Word bahwa ini dokumen untuk diprint (Tampilan Print Layout)
     const finalHTML = `
-      <html xmlns:w="urn:schemas-microsoft-com:office:word">
+      <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta charset="utf-8">
         <title>${title}</title>
+        <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
         <style>
           @page { size: A4; margin: 2cm 2.5cm 2.5cm 2.5cm; }
           body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: black; background: white; margin: 0; padding: 0; }
@@ -1173,7 +1227,6 @@ async function exportDocument(format) {
       </html>
     `;
 
-    // Trigger Print atau Download
     if (format === 'pdf') {
       const printWin = window.open('', '_blank');
       printWin.document.write(finalHTML);
@@ -1189,6 +1242,7 @@ async function exportDocument(format) {
     }
   }, 'Menyiapkan dokumen resmi...');
 }
+
 
 async function copyDocument() {
   try {
