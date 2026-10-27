@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#6254dc">
+  <title>Koneksi terputus | EduPlan AI</title>
+  
+  
+  <!-- Favicon dari folder asset -->
+<link rel="icon" type="image/png" href="./asset/logo.png">
+  
+  
+  
+  <!-- Semua aset halaman ini tertanam agar tetap tampil tanpa internet. -->
+  <script>
+    try {
+      document.documentElement.dataset.theme = localStorage.getItem('eduplan-theme') || 'light';
+    } catch (_) {}
+  </script>
+  <style>
+    :root { color-scheme:light; --bg:#f5f7fc; --surface:#fff; --text:#1c2440; --muted:#63708a; --line:#e5e9f3; --primary:#6254dc; --soft:#eeebff; --shadow:0 24px 80px rgba(45,38,105,.09); }
+    [data-theme="dark"] { color-scheme:dark; --bg:#101523; --surface:#1a2134; --text:#edf0ff; --muted:#a0abc4; --line:#303a52; --primary:#a598ff; --soft:#322c53; --shadow:0 24px 80px rgba(0,0,0,.2); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; min-height:100svh; display:grid; place-items:center; padding:28px 20px; background:radial-gradient(ellipse at 15% 10%,var(--soft),transparent 55%),var(--bg); color:var(--text); font:14px/1.7 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    .page { width:100%; max-width:580px; }
+    .brand { display:flex; align-items:center; justify-content:center; gap:10px; margin-bottom:26px; font-size:21px; font-weight:800; letter-spacing:-.6px; }
+    .brand-mark { display:grid; place-items:center; width:35px; height:35px; border-radius:11px; background:#6254dc; color:#fff; font-size:22px; }
+    .card { padding:40px; border:1px solid var(--line); border-radius:26px; background:var(--surface); box-shadow:var(--shadow); text-align:center; }
+    .illustration { position:relative; display:grid; place-items:center; width:130px; height:130px; margin:0 auto 25px; border-radius:40px; background:var(--soft); color:var(--primary); }
+    .illustration svg { width:76px; height:76px; }
+    .status { display:inline-flex; align-items:center; justify-content:center; gap:7px; margin-bottom:15px; padding:5px 11px; border:1px solid var(--line); border-radius:99px; color:var(--muted); font-size:11px; font-weight:650; }
+    .dot { width:7px; height:7px; border-radius:50%; background:#b98326; }
+    .status[data-online="true"] .dot { background:#16855e; }
+    h1 { margin:0 0 13px; font-size:clamp(25px,5vw,33px); line-height:1.25; letter-spacing:-.8px; }
+    .intro { max-width:410px; margin:0 auto 25px; color:var(--muted); font-size:14px; }
+    .actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:10px; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:45px; padding:11px 18px; border:1px solid var(--line); border-radius:11px; color:var(--text); background:var(--surface); font:650 13px/1.4 system-ui,sans-serif; text-decoration:none; cursor:pointer; }
+    .btn-primary { border-color:transparent; background:var(--primary); color:#fff; }
+    [data-theme="dark"] .btn-primary { color:#1c183a; }
+    .btn svg { width:17px; height:17px; }
+    .btn:hover { filter:brightness(.97); }
+    :focus-visible { outline:3px solid var(--primary); outline-offset:4px; }
+    .tips { margin-top:28px; padding:18px 19px; border:1px solid var(--line); border-radius:14px; background:var(--bg); text-align:left; }
+    .tips h2 { margin:0 0 9px; font-size:12px; font-weight:750; }
+    .tips ul { margin:0; padding-left:18px; color:var(--muted); font-size:12px; }
+    .tips li + li { margin-top:5px; }
+    .connection { margin:17px 0 0; color:var(--muted); font-size:12px; }
+    .footer { margin:20px 0 0; color:var(--muted); font-size:11px; text-align:center; }
+    @media(max-width:480px) { body { padding:24px 16px; } .card { padding:29px 22px; border-radius:21px; } .illustration { width:110px; height:110px; border-radius:32px; } .actions { flex-direction:column; } .btn { width:100%; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="brand" aria-label="EduPlan AI"><span class="brand-mark" aria-hidden="true">✦</span><span>EduPlan AI</span></header>
+    <main class="card">
+      <div class="illustration" aria-hidden="true">
+        <svg viewBox="0 0 80 80" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M13 29c15-12 39-12 54 0M23 41c10-8 24-8 34 0M33 53c4-3 10-3 14 0"/>
+          <circle cx="40" cy="64" r="2.8" fill="currentColor" stroke="none"/>
+          <path d="m15 13 50 50" stroke="var(--surface)" stroke-width="10"/>
+          <path d="m15 13 50 50"/>
+        </svg>
+      </div>
+      <div class="status" id="status"><span class="dot" aria-hidden="true"></span><span id="status-label">Halaman offline</span></div>
+      <h1>Sejenak terputus,<br>segera terhubung kembali.</h1>
+      <p class="intro">Halaman ini belum dapat dimuat. Periksa koneksi internet Anda, lalu kembali lanjutkan aktivitas di ruang kerja.</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="retry" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M6 7a7 7 0 0 1 12 0l2 5M4 12l2 5a7 7 0 0 0 12 0"/></svg>
+          Coba hubungkan kembali
+        </button>
+        <a class="btn" href="./">Ke halaman utama</a>
+      </div>
+      <section class="tips" aria-labelledby="tips-title">
+        <h2 id="tips-title">Sambil menunggu koneksi</h2>
+        <ul>
+          <li>Pastikan Wi-Fi atau data seluler aktif.</li>
+          <li>Coba beralih jaringan jika halaman tetap tidak terbuka.</li>
+          <li>Login, generate AI, dan akses dokumen memerlukan internet. Perubahan yang belum disimpan tidak dijamin tersimpan.</li>
+        </ul>
+      </section>
+      <p class="connection" id="connection" role="status" aria-live="polite">Periksa koneksi, lalu tekan tombol di atas.</p>
+    </main>
+    <footer class="footer">EduPlan AI · Lebih sedikit administrasi, lebih banyak inspirasi.</footer>
+  </div>
+  <script>
+    (() => {
+      const status = document.getElementById('status');
+      const label = document.getElementById('status-label');
+      const connection = document.getElementById('connection');
+      function updateConnection() {
+        const online = navigator.onLine;
+        status.dataset.online = String(online);
+        label.textContent = online ? 'Jaringan terdeteksi' : 'Perangkat sedang offline';
+        connection.textContent = online
+          ? 'Perangkat mendeteksi jaringan. Tekan tombol untuk mencoba kembali; akses ke server belum dipastikan.'
+          : 'Belum ada jaringan yang terdeteksi. Aktifkan Wi-Fi atau data seluler.';
+      }
+      document.getElementById('retry').addEventListener('click', () => window.location.reload());
+      window.addEventListener('online', updateConnection);
+      window.addEventListener('offline', updateConnection);
+      updateConnection();
+    })();
+  </script>
+</body>
+</html>

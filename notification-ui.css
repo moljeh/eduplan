@@ -1,0 +1,61 @@
+/* EduPlan AI — Modern notifications. Load AFTER style.css. */
+.edu-toast-stack {
+  position: fixed; top: 22px; right: 22px; z-index: 1200;
+  display: grid; gap: 12px; width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 44px); overflow-y: auto; pointer-events: none;
+}
+.edu-toast {
+  --accent: #16855e;
+  position: relative; display: grid; grid-template-columns: 38px 1fr 28px;
+  gap: 12px; padding: 18px 16px 21px; overflow: hidden; pointer-events: auto;
+  background: var(--surface, #fff); color: var(--text, #1c2440);
+  border: 1px solid var(--line, #e5e9f3); border-left: 4px solid var(--accent);
+  border-radius: 15px; box-shadow: 0 12px 40px #1724471f;
+  animation: edu-toast-enter .23s ease both;
+}
+.edu-toast[data-type="error"] { --accent: #d34765; }
+.edu-toast[data-type="info"] { --accent: #6254dc; }
+.edu-toast[data-type="warning"] { --accent: #bc851d; }
+.edu-toast-icon, .edu-dialog-icon {
+  display: grid; place-items: center; width: 38px; height: 38px;
+  border-radius: 12px; background: var(--primary-soft, #eeebff);
+  color: var(--accent, #6254dc); font-size: 20px; font-weight: 700;
+}
+.edu-toast-title { margin: 0 0 3px; font-size: 14px; font-weight: 750; }
+.edu-toast-message { margin: 0; font-size: 13px; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; color: var(--muted, #758099); }
+.edu-icon-button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted, #758099); font: inherit; font-size: 20px; cursor: pointer; }
+.edu-icon-button:hover { background: var(--primary-soft, #eeebff); }
+.edu-toast-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--accent); transform-origin: left; animation: edu-toast-progress var(--duration, 6000ms) linear forwards; }
+.edu-toast:hover .edu-toast-progress { animation-play-state: paused; }
+.edu-dialog {
+  width: min(460px, calc(100vw - 32px)); max-height: calc(100dvh - 40px);
+  margin: auto; padding: 0; overflow-y: auto; border: 1px solid var(--line, #e5e9f3);
+  border-radius: 22px; background: var(--surface, #fff); color: var(--text, #1c2440);
+  box-shadow: 0 30px 100px #10172c44;
+}
+.edu-dialog::backdrop { background: #0f173373; backdrop-filter: blur(5px); }
+.edu-dialog[open] { animation: edu-dialog-enter .2s ease both; }
+.edu-dialog-body { padding: 27px 27px 22px; }
+.edu-dialog-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 19px; }
+.edu-dialog-icon { width: 48px; height: 48px; font-size: 24px; border-radius: 15px; }
+.edu-dialog[data-danger="true"] .edu-dialog-icon { background: var(--danger-soft, #ffedf1); color: var(--danger, #c63e5c); }
+.edu-dialog h2 { margin: 0 0 10px; font: 750 21px/1.35 system-ui, sans-serif; letter-spacing: -.4px; }
+.edu-dialog p { margin: 0; color: var(--muted, #758099); font-size: 14px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; }
+.edu-dialog-footer { display: flex; justify-content: flex-end; gap: 10px; padding: 18px 27px; background: var(--surface-alt, #f9faff); border-top: 1px solid var(--line, #e5e9f3); }
+.edu-dialog-button { min-height: 43px; padding: 10px 19px; border: 1px solid var(--line, #e5e9f3); border-radius: 11px; background: var(--surface, #fff); color: var(--text, #1c2440); font: 650 13px system-ui, sans-serif; cursor: pointer; }
+.edu-dialog-button-primary { border-color: transparent; background: var(--primary, #6254dc); color: #fff; }
+.edu-dialog[data-danger="true"] .edu-dialog-button-primary { background: #c63e5c; color: #fff; }
+[data-theme="dark"] .edu-dialog:not([data-danger="true"]) .edu-dialog-button-primary { color: #201a42; }
+.edu-dialog-button:focus-visible, .edu-icon-button:focus-visible { outline: 3px solid var(--primary, #6254dc); outline-offset: 3px; }
+@keyframes edu-toast-enter { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes edu-dialog-enter { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes edu-toast-progress { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (max-width: 600px) {
+  .edu-toast-stack { top: 12px; right: 12px; width: calc(100vw - 24px); }
+  .edu-dialog-body { padding: 23px; }
+  .edu-dialog-footer { padding: 16px 23px; }
+  .edu-dialog-button { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .edu-toast, .edu-dialog[open] { animation: none; }
+}
