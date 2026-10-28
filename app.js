@@ -1703,10 +1703,22 @@ async function renderUsers() {
     const usersSnap = await getDocs(collection(db, 'Users'));
     let tableRows = '';
     let no = 1;
+    
+    // Variabel untuk menghitung rekapan
+    let totalUsers = 0;
+    let totalActive = 0;
+    let totalAdmins = 0;
+    let totalTeachers = 0;
 
     usersSnap.forEach(docSnap => {
+      totalUsers++;
       const u = docSnap.data();
       const email = docSnap.id;
+      
+      // Hitung rekap
+      if (u.active) totalActive++;
+      if (u.role === 'admin') totalAdmins++;
+      else totalTeachers++;
       
       const roleBadge = u.role === 'admin' 
         ? '<span style="background: #e0e7ff; color: #4f46e5; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">Admin</span>' 
@@ -1729,6 +1741,7 @@ async function renderUsers() {
           <td style="padding: 16px 12px; text-align: right;">
             <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
               ${button('Ubah', 'edit-user', `data-id="${email}"`, 'btn-small')}
+              ${button('Hapus', 'delete-user', `data-id="${email}"`, 'btn-small btn-danger')}
               <button type="button" onclick="editUserQuota('${email}', ${quota})" style="padding: 6px 12px; background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
                 Edit Kuota
               </button>
@@ -1747,7 +1760,7 @@ async function renderUsers() {
         <div class="notice">Login tidak memverifikasi kepemilikan email. Orang yang mengetahui email admin dapat masuk sebagai admin. Gunakan hanya untuk lingkungan tepercaya.</div>
         
         <form class="card" data-form="user" id="user-form">
-          <h2 id="user-form-heading">Tambah akun</h2>
+          <h2 id="user-form-heading">Tambah akun (Manual)</h2>
           <input type="hidden" name="id" value="">
           <div class="form-grid">
             ${field('email', 'Email', '', {type: 'email', required: true, max: 254})}
@@ -1756,8 +1769,29 @@ async function renderUsers() {
             ${field('school', 'Sekolah', '', {max: 200})}
           </div>
           ${check('active', 'Akun aktif', true)}
-          <div class="row"><button class="btn btn-primary" type="submit">Simpan akun</button>${button('Form baru', 'new-user', '', 'btn-outline')}</div>
+          <div class="row"><button class="btn btn-primary" type="submit">Simpan akun</button>${button('Batal / Bersihkan Form', 'new-user', '', 'btn-outline')}</div>
         </form>
+
+        <!-- KARTU REKAP DATA -->
+        <h2 style="margin-top: 10px; margin-bottom: 0;">Rekap Pengguna</h2>
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 10px;">
+          <div class="card" style="padding: 16px; text-align: center; margin-bottom: 0;">
+            <div style="font-size: 0.8rem; color: #64748b;">Total Pendaftar</div>
+            <div style="font-size: 1.8rem; font-weight: bold;">${totalUsers}</div>
+          </div>
+          <div class="card" style="padding: 16px; text-align: center; margin-bottom: 0;">
+            <div style="font-size: 0.8rem; color: #64748b;">Akun Aktif</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #10b981;">${totalActive}</div>
+          </div>
+          <div class="card" style="padding: 16px; text-align: center; margin-bottom: 0;">
+            <div style="font-size: 0.8rem; color: #64748b;">Total Guru</div>
+            <div style="font-size: 1.8rem; font-weight: bold;">${totalTeachers}</div>
+          </div>
+          <div class="card" style="padding: 16px; text-align: center; margin-bottom: 0;">
+            <div style="font-size: 0.8rem; color: #64748b;">Total Admin</div>
+            <div style="font-size: 1.8rem; font-weight: bold; color: #4f46e5;">${totalAdmins}</div>
+          </div>
+        </div>
 
         <div class="card table-wrap" style="overflow-x: auto;">
           <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
