@@ -25,6 +25,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBAOx9xheoXL_pzhpmQvGS5ZGwE3VSc0W8",
@@ -38,6 +39,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+
+export const auth = getAuth(app);
 
 const CONFIG = Object.freeze({
   SESSION_KEY: 'eduplan-session',
@@ -283,14 +286,44 @@ function formValues(form) { return Object.fromEntries(new FormData(form).entries
 async function api(action, params = {}) {
   try {
     switch (action) {
+		
+		
+		case 'resetPassword':
+        await sendPasswordResetEmail(auth, params.email);
+        return true;
+      
+	 case 'register':
+        // 1. Buat akun di sistem autentikasi Firebase (mengamankan password)
+        const userCredential = await createUserWithEmailAndPassword(auth, params.email, params.password);
+        const newUser = userCredential.user;
+        
+        // 2. Simpan profil lengkapnya ke Firestore Database
+        const registerData = { 
+          email: params.email, 
+          name: params.name, 
+          school: params.school, 
+          whatsapp: params.whatsapp,
+          role: 'guru', // Default pendaftar baru adalah guru
+          active: true, // Atau false jika butuh persetujuan admin dulu
+          tokenBalance: 0, // Bonus token awal jika ada
+          dailyQuota: 10
+        };
+        await setDoc(doc(db, "Users", params.email), registerData);
+       return { token: params.email, user: registerData };
+
       case 'login':
-        const usersRef = collection(db, "Users");
-        const q = query(usersRef, where("email", "==", params.email));
-        const querySnapshot = await getDocs(q);
-        if (querySnapshot.empty) throw new Error("Email tidak terdaftar di sistem kami.");
-        const userData = querySnapshot.docs[0].data();
-        if (userData.active === false) throw new Error("Akun ini telah dinonaktifkan admin.");
-        return { token: querySnapshot.docs[0].id, user: userData };
+        // 1. Verifikasi email dan password ke Firebase Auth
+        const loginCredential = await signInWithEmailAndPassword(auth, params.email, params.password);
+        
+        // 2. Ambil data profilnya dari Firestore
+        const userRefLogin = doc(db, "Users", params.email);
+        const userSnapLogin = await getDoc(userRefLogin);
+        
+        if (!userSnapLogin.exists()) throw new Error("Profil pengguna tidak ditemukan di database.");
+        const userData = userSnapLogin.data();
+        if (userData.active === false) throw new Error("Akun ini belum diaktifkan atau dinonaktifkan admin.");
+        
+       return { token: params.email, user: userData };
 
       case 'boot':
         const userRef = doc(db, "Users", state.token);
@@ -618,50 +651,111 @@ function renderLogin() {
           <span class="brand-mark" aria-hidden="true">✦</span>
           <div class="login-brand-text">
             <span class="login-brand-name">EduPlan AI</span>
-            <a class="login-developer-credit" href="https://www.tiktok.com/@putramadasa" target="_blank" rel="noopener noreferrer" aria-label="Buka TikTok Arom Kobama, @putramadasa">
-              Developed by <span>Arom Kobama</span>
-            </a>
           </div>
         </div>
-        <span class="eyebrow">RUANG KERJA PENDIDIK</span>
+        <span class="eyebrow">✦ SMART EDUCATOR WORKSPACE</span>
         <h1>Lebih sedikit administrasi.<br>Lebih banyak inspirasi.</h1>
         <p>Susun perangkat ajar, rencanakan pembelajaran, dan kelola dokumen dalam satu ruang kerja.</p>
-        <div class="login-points"><span>40 generator</span><span>3 provider AI</span><span>Cloud Firestore</span></div>
+        <div class="login-points"><span>Keamanan Standar Industri</span><span>Sistem Multi-AI</span><span>Cloud Terenkripsi</span></div>
       </section>
+      
       <section class="login-panel">
-        <div class="login-box">
+        <div class="login-box" id="login-form-container">
           <h1>Selamat datang 👋</h1>
-          <p class="muted">Masuk menggunakan email yang sudah didaftarkan admin.</p>
+          <p class="muted">Masuk ke ruang kerja dengan email dan sandi Anda.</p>
           <form data-form="login">
-            ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, autocomplete: 'email', placeholder: 'nama@sekolah.sch.id'})}
+            ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, autocomplete: 'email'})}
+<label class="field" style="position: relative;">
+  <span>Kata sandi</span>
+  <input name="password" type="password" required maxlength="100" style="padding-right: 40px;">
+  <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </button>
+</label>
+
+<div style="text-align: right; margin-top: -8px; margin-bottom: 16px;">
+  <button type="button" data-action="forgot-password" style="background: transparent; border: none; color: #4f46e5; font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Lupa kata sandi?</button>
+</div>
+
+
             <button type="submit" class="btn btn-primary full">Masuk ke ruang kerja →</button>
           </form>
-
-          <!-- TAMBAHAN TOMBOL DAFTAR VIA WHATSAPP -->
-          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(128,128,128,0.2); text-align: center;">
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">Belum memiliki akun atau ingin mendaftar?</p>
-            <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20mendaftar%20akun%20baru.%0A%0A*Identitas%20Guru*:%0ANama:%20%5BIsi%20nama%20Anda%5D%0AEmail:%20%5BIsi%20email%20Anda%5D%0ASekolah:%20%5BIsi%20asal%20sekolah%5D" target="_blank" class="btn btn-outline full" style="border-color: #10b981; color: #10b981; text-decoration: none; display: inline-flex; justify-content: center; align-items: center; gap: 6px;">
-              💬 Daftar / Hubungi Admin via WhatsApp
-            </a>
+          <div style="margin-top: 24px; text-align: center; border-top: 1px solid rgba(128,128,128,0.2); padding-top: 20px;">
+            <p style="font-size: 0.9rem; color: #64748b; margin-bottom: 12px;">Belum memiliki akun?</p>
+            <button type="button" class="btn btn-outline full" onclick="document.getElementById('login-form-container').style.display='none'; document.getElementById('register-form-container').style.display='block';">Daftar Akun Baru</button>
           </div>
+        </div>
 
-          <div class="notice" style="margin-top: 16px;">Masuk menggunakan email terdaftar tanpa OTP atau kata sandi. Demi keamanan, gunakan aplikasi hanya di lingkungan tepercaya.</div>
-          <div class="login-footer">EduPlan AI · Draf cerdas, tetap ditinjau guru</div>
+        <div class="login-box" id="register-form-container" style="display: none;">
+          <h1>Buat Akun Baru 🚀</h1>
+          <p class="muted">Lengkapi data diri Anda untuk membuat ruang kerja.</p>
+          <form data-form="register">
+            <div class="form-grid">
+              ${field('name', 'Nama lengkap', '', {required: true, max: 100, full: true})}
+              ${field('school', 'Nama instansi/sekolah', '', {required: true, max: 150})}
+              ${field('whatsapp', 'No. WhatsApp', '', {type: 'tel', required: true, max: 20, placeholder: '08123...'})}
+              ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, full: true})}
+<label class="field span-2" style="position: relative;">
+  <span>Buat kata sandi</span>
+  <input name="password" type="password" required maxlength="100" placeholder="Minimal 6 karakter" style="padding-right: 40px;">
+  <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+  </button>
+</label>
+            </div>
+            <button type="submit" class="btn btn-primary full mt-20">Daftar Sekarang →</button>
+          </form>
+         <div style="margin-top: 24px; text-align: center; border-top: 1px solid rgba(128,128,128,0.2); padding-top: 20px;">
+  <span style="font-size: 0.9rem; color: #64748b;">Sudah memiliki akun?</span>
+  <button type="button" style="background: transparent; border: none; color: #4f46e5; font-weight: 600; font-size: 0.9rem; cursor: pointer; padding: 0 0 0 4px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" onclick="document.getElementById('register-form-container').style.display='none'; document.getElementById('login-form-container').style.display='block';">Masuk di sini</button>
+</div>
         </div>
       </section>
     </main>`;
 }
 
-async function login(form) {
+
+async function register(form) {
   const values = formValues(form);
+  if (values.password.length < 6) {
+    EduNotify.toast('Kata sandi minimal 6 karakter.', {type: 'error'});
+    return;
+  }
   await run(async () => {
-    const session = await api('login', {email: values.email.trim().toLowerCase()});
+    const session = await api('register', {
+      email: values.email.trim().toLowerCase(),
+      password: values.password,
+      name: values.name.trim(),
+      school: values.school.trim(),
+      whatsapp: values.whatsapp.trim()
+    });
+    // Otomatis masuk setelah daftar berhasil
     state.token = session.token;
     sessionStorage.setItem(CONFIG.SESSION_KEY, state.token);
     applyBoot(await api('boot'));
     renderShell();
     renderDashboard();
-  }, 'Memeriksa email...');
+    window.Swal.fire('Pendaftaran Berhasil', 'Selamat datang di ruang kerja baru Anda!', 'success');
+  }, 'Mendaftarkan akun Anda...');
+}
+
+
+
+async function login(form) {
+  const values = formValues(form);
+  await run(async () => {
+    // Parameter password kini ditambahkan ke dalam pemanggilan API
+    const session = await api('login', {
+      email: values.email.trim().toLowerCase(),
+      password: values.password
+    });
+    
+    state.token = session.token;
+    sessionStorage.setItem(CONFIG.SESSION_KEY, state.token);
+    applyBoot(await api('boot'));
+    renderShell();
+    renderDashboard();
+  }, 'Memverifikasi akun...');
 }
 
 function applyBoot(data) {
@@ -867,7 +961,7 @@ function renderDashboard() {
     
   $('#content').innerHTML = `<div class="stack">
     <section class="hero">
-      <span class="eyebrow">ASISTEN PERANGKAT AJAR</span>
+      <span class="eyebrow">✦ AI TEACHING CO-PILOT</span>
       <h1>Selamat berkarya, ${escapeHTML(state.user.name)}.</h1>
       <p>Mulai dari perencanaan hingga refleksi. Buat draf perangkat ajar, sesuaikan isinya, lalu simpan dalam satu ruang kerja.</p>
       
@@ -1982,8 +2076,25 @@ async function onClick(event) {
   const target = event.target.closest('[data-action]');
   if (!target || state.busy) return;
   const data = target.dataset;
-  switch (data.action) {
-    case 'navigate': return navigate(data.route, data.category);
+  
+  switch (data.action) { // <-- TAMBAHKAN BARIS INI
+  
+  
+  
+  case 'forgot-password': return resetPasswordHandler();
+  
+    case 'toggle-password':
+      const pwdInput = target.parentElement.querySelector('input[name="password"]');
+      if (pwdInput) {
+        const isHidden = pwdInput.type === 'password';
+        pwdInput.type = isHidden ? 'text' : 'password';
+        
+        const iconEye = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+        const iconEyeOff = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+        
+        target.innerHTML = isHidden ? iconEyeOff : iconEye;
+      }
+      return;
     case 'generator': return renderGenerator(data.type);
     case 'logout': return logout();
     case 'theme': return toggleTheme();
@@ -2021,7 +2132,8 @@ function onSubmit(event) {
   if (!form) return;
   event.preventDefault();
   if (state.busy) return;
-  const handlers = {login, generate, 'save-document': saveDocument, profile: saveProfile, user: saveUser, provider: saveProvider, settings: saveSettings};
+ // Ganti baris handlers menjadi:
+  const handlers = {login, register, 'save-document': saveDocument, profile: saveProfile, user: saveUser, provider: saveProvider, settings: saveSettings};
   const handler = handlers[form.dataset.form];
   if (handler) handler(form);
 }
@@ -2105,6 +2217,26 @@ async function init() {
     applyBoot(await api('boot'));
     renderShell(); renderDashboard();
   }, 'Memulihkan sesi...');
+}
+
+
+async function resetPasswordHandler() {
+  const { value: email } = await Swal.fire({
+    title: 'Reset Kata Sandi',
+    text: 'Masukkan alamat email Anda untuk menerima tautan pemulihan.',
+    input: 'email',
+    inputPlaceholder: 'nama@sekolah.sch.id',
+    showCancelButton: true,
+    confirmButtonText: 'Kirim Tautan',
+    cancelButtonText: 'Batal'
+  });
+
+  if (email) {
+    await run(async () => {
+      await api('resetPassword', { email: email.trim().toLowerCase() });
+      Swal.fire('Terkirim!', 'Tautan reset sandi telah dikirim. Silakan cek kotak masuk atau folder spam email Anda.', 'success');
+    }, 'Mengirim email pemulihan...');
+  }
 }
 
 init();

@@ -509,11 +509,27 @@ textarea.editor {
   background:white;
   color:#5846c3;
 }
+
+
 .eyebrow {
-  font-size:10px;
-  letter-spacing:1.8px;
-  font-weight:700;
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.2em; /* Memberikan jarak spasi huruf yang lebar dan elegan */
+  text-transform: uppercase;
+  padding: 6px 16px;
+  border-radius: 50px; /* Membuat sudutnya melengkung penuh seperti kapsul */
+  background: rgba(255, 255, 255, 0.15); /* Efek transparan yang halus */
+  color: #ffffff; /* Warna teks putih bersih */
+  border: 1px solid rgba(255, 255, 255, 0.3); /* Garis tepi tipis yang modern */
+  margin-bottom: 20px;
+  backdrop-filter: blur(4px); /* Efek kaca / glassmorphism */
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); /* Bayangan sangat tipis */
 }
+
+
 .stat-label {
   color:var(--muted);
   font-size:12px;
