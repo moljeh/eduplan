@@ -389,14 +389,14 @@ async function api(action, params = {}) {
           throw new Error(`Tes koneksi untuk provider ${params.id} belum tersedia di versi ini.`);
         }
 		
-      case 'generate':
+case 'generate':
         const genProvRef = doc(db, "Providers", params.provider || 'gemini');
         const genProvSnap = await getDoc(genProvRef);
         if (!genProvSnap.exists() || !genProvSnap.data().key) {
-          throw new Error(`API Key untuk ${params.provider} belum dikonfigurasi.`);
+          throw new Error(`API Key untuk ${params.provider || 'gemini'} belum dikonfigurasi.`);
         }
         const apiKeyGen = genProvSnap.data().key;
-        const modelNameGen = genProvSnap.data().model || 'gemini-3.8-flash';
+        const modelNameGen = genProvSnap.data().model || (params.provider === 'openai' ? 'gpt-4o' : params.provider === 'claude' ? 'claude-3-5-sonnet-20241022' : 'gemini-3.8-flash');
 
         const promptText = `Anda adalah asisten AI profesional untuk guru di Indonesia. Buat draf ${params.type.replace(/_/g, ' ')}.
 Mata Pelajaran: ${params.subject || '-'}
@@ -407,7 +407,10 @@ Instruksi Khusus: ${params.instructions || '-'}
 Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digunakan tanpa basa-basi atau kalimat pembuka/penutup.`;
 
         let generatedText = "";
-        if (params.provider === 'gemini' || !params.provider) {
+        const activeProvider = params.provider || 'gemini';
+
+        // 1. JIKA PROVIDER GEMINI
+        if (activeProvider === 'gemini') {
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelNameGen}:generateContent?key=${apiKeyGen}`;
           const response = await fetch(endpoint, {
             method: 'POST',
@@ -415,10 +418,54 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
             body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error?.message || "Gagal membuat dokumen dari server AI.");
+          if (!response.ok) throw new Error(data.error?.message || "Gagal membuat dokumen dari server Gemini.");
           generatedText = data.candidates[0].content.parts[0].text;
-        } else {
-          throw new Error("Saat ini baru Gemini yang aktif di versi PWA ini.");
+        } 
+        
+        // 2. JIKA PROVIDER OPENAI (GPT)
+        else if (activeProvider === 'openai') {
+          const endpoint = 'https://api.openai.com/v1/chat/completions';
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKeyGen}`
+            },
+            body: JSON.stringify({
+              model: modelNameGen,
+              messages: [{ role: 'user', content: promptText }],
+              temperature: 0.7
+            })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error?.message || "Gagal membuat dokumen dari server OpenAI.");
+          generatedText = data.choices[0].message.content;
+        } 
+        
+        // 3. JIKA PROVIDER CLAUDE (ANTHROPIC)
+        else if (activeProvider === 'claude') {
+          const endpoint = 'https://api.anthropic.com/v1/messages';
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-api-key': apiKeyGen,
+              'anthropic-version': '2023-06-01',
+              'anthropic-dangerous-direct-browser-access': 'true' // Diperlukan agar fetch langsung dari browser PWA
+            },
+            body: JSON.stringify({
+              model: modelNameGen,
+              max_tokens: 4000,
+              messages: [{ role: 'user', content: promptText }]
+            })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error?.message?.message || "Gagal membuat dokumen dari server Claude.");
+          generatedText = data.content[0].text;
+        } 
+        
+        else {
+          throw new Error(`Provider ${activeProvider} tidak dikenali.`);
         }
 
         const newDocRef = doc(collection(db, "Documents"));
@@ -427,7 +474,7 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
           owner: state.user.email,
           title: `Draf ${params.type.replace(/_/g, ' ')} - ${params.topic || 'Baru'}`,
           type: params.type,
-          provider: params.provider || 'gemini',
+          provider: activeProvider,
           created: Date.now(),
           updated: Date.now(),
           revision: 1,
@@ -553,7 +600,16 @@ function renderLogin() {
             ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, autocomplete: 'email', placeholder: 'nama@sekolah.sch.id'})}
             <button type="submit" class="btn btn-primary full">Masuk ke ruang kerja →</button>
           </form>
-          <div class="notice">Masuk menggunakan email terdaftar tanpa OTP atau kata sandi. Demi keamanan, gunakan aplikasi hanya di lingkungan tepercaya. Akses melalui email terdaftar tidak memverifikasi identitas pengguna.</div>
+
+          <!-- TAMBAHAN TOMBOL DAFTAR VIA WHATSAPP -->
+          <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(128,128,128,0.2); text-align: center;">
+            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">Belum memiliki akun atau ingin mendaftar?</p>
+            <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20mendaftar%20akun%20baru.%0A%0A*Identitas%20Guru*:%0ANama:%20%5BIsi%20nama%20Anda%5D%0AEmail:%20%5BIsi%20email%20Anda%5D%0ASekolah:%20%5BIsi%20asal%20sekolah%5D" target="_blank" class="btn btn-outline full" style="border-color: #10b981; color: #10b981; text-decoration: none; display: inline-flex; justify-content: center; align-items: center; gap: 6px;">
+              💬 Daftar / Hubungi Admin via WhatsApp
+            </a>
+          </div>
+
+          <div class="notice" style="margin-top: 16px;">Masuk menggunakan email terdaftar tanpa OTP atau kata sandi. Demi keamanan, gunakan aplikasi hanya di lingkungan tepercaya.</div>
           <div class="login-footer">EduPlan AI · Draf cerdas, tetap ditinjau guru</div>
         </div>
       </section>
