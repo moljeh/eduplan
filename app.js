@@ -319,11 +319,31 @@ async function api(action, params = {}) {
         const dailyLimit = settingsSnapBoot.exists() ? settingsSnapBoot.data().dailyLimit : 10;
 
         const appCatalog = {
-          perencanaan: { title: 'Perencanaan', icon: '📄', items: ['rpp', 'modul_ajar', 'atp', 'tp', 'kktp', 'lkpd', 'distribusi_tp'] },
-          program: { title: 'Program', icon: '📅', items: ['prota', 'promes', 'program_literasi', 'program_ekstrakurikuler', 'program_remedial', 'program_pengayaan', 'kalender_pendidikan'] },
-          asesmen: { title: 'Asesmen', icon: '🎯', items: ['bank_soal', 'kisi_kisi', 'asesmen_diagnostik', 'asesmen_formatif', 'asesmen_sumatif', 'rubrik_penilaian', 'lembar_observasi', 'jurnal_sikap'] },
-          administrasi: { title: 'Administrasi', icon: '📂', items: ['buku_tamu', 'buku_agenda', 'daftar_hadir', 'notulen_rapat', 'surat_tugas', 'surat_pemberitahuan', 'tata_tertib'] },
-          bahan_media: { title: 'Bahan & Media', icon: '✨', items: ['bahan_bacaan', 'skenario_video', 'naskah_podcast', 'slide_presentasi', 'ide_games', 'flashcard', 'poster_edukasi', 'teks_pidato', 'teks_puisi', 'cerita_pendek', 'skenario_roleplay'] }
+          perencanaan: { 
+            title: 'Perencanaan', 
+            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`, 
+            items: ['rpp', 'modul_ajar', 'atp', 'tp', 'kktp', 'lkpd', 'distribusi_tp'] 
+          },
+          program: { 
+            title: 'Program', 
+            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`, 
+            items: ['prota', 'promes', 'program_literasi', 'program_ekstrakurikuler', 'program_remedial', 'program_pengayaan', 'kalender_pendidikan'] 
+          },
+          asesmen: { 
+            title: 'Asesmen', 
+            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>`, 
+            items: ['bank_soal', 'kisi_kisi', 'asesmen_diagnostik', 'asesmen_formatif', 'asesmen_sumatif', 'rubrik_penilaian', 'lembar_observasi', 'jurnal_sikap'] 
+          },
+          administrasi: { 
+            title: 'Administrasi', 
+            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`, 
+            items: ['buku_tamu', 'buku_agenda', 'daftar_hadir', 'notulen_rapat', 'surat_tugas', 'surat_pemberitahuan', 'tata_tertib'] 
+          },
+          bahan_media: { 
+            title: 'Bahan & Media', 
+            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`, 
+            items: ['bahan_bacaan', 'skenario_video', 'naskah_podcast', 'slide_presentasi', 'ide_games', 'flashcard', 'poster_edukasi', 'teks_pidato', 'teks_puisi', 'cerita_pendek', 'skenario_roleplay'] 
+          }
         };
 
         return {
@@ -672,9 +692,9 @@ function renderShell() {
   const categories = Object.entries(state.catalog).map(([key, value]) => navItem('category', value.title, value.icon, `data-category="${key}"`)).join('');
   const admin = user.role === 'admin' ? `
     <div class="nav-title">ADMINISTRATOR</div>
-    ${navItem('users', 'Manajemen pengguna', '♙')}
-    ${navItem('settings', 'Pengaturan AI & kuota', '⚙')}
-    ${navItem('logs', 'Log aktivitas', '≡')}` : '';
+    ${navItem('users', 'Manajemen pengguna', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>')}
+    ${navItem('settings', 'Pengaturan AI & kuota', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>')}
+    ${navItem('logs', 'Log aktivitas', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>')}` : '';
   
   $('#app').innerHTML = `
     <button class="backdrop" type="button" data-action="close-menu" aria-label="Tutup menu"></button>
@@ -690,17 +710,18 @@ function renderShell() {
       </div>
       <nav>
         <div class="nav-title">RUANG KERJA</div>
-        ${navItem('dashboard', 'Dashboard', '◈')}${categories}
+        ${navItem('dashboard', 'Dashboard', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>')}
+        ${categories}
         <div class="nav-title">DOKUMEN</div>
-        ${navItem('history', 'Riwayat dokumen', '◷')}
-        ${navItem('favorites', 'Favorit', '☆')}
-        ${navItem('trash', 'Sampah', '♧')}
-        ${navItem('profile', 'Profil guru & sekolah', '◎')}
+        ${navItem('history', 'Riwayat dokumen', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>')}
+        ${navItem('favorites', 'Favorit', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>')}
+        ${navItem('trash', 'Sampah', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>')}
+        ${navItem('profile', 'Profil guru & sekolah', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>')}
         ${admin}
         <div class="nav-title">LAINNYA</div>
-        ${navItem('help', 'Panduan penggunaan', '?')}
-        <button type="button" class="nav-item" data-action="theme"><span class="nav-icon">◐</span>Ganti tema</button>
-        <button type="button" class="nav-item" data-action="logout"><span class="nav-icon">↪</span>Keluar</button>
+        ${navItem('help', 'Panduan penggunaan', '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>')}
+        <button type="button" class="nav-item" data-action="theme"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg></span>Ganti tema</button>
+        <button type="button" class="nav-item" data-action="logout"><span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg></span>Keluar</button>
       </nav>
       <div class="sidebar-footer">Hasil AI adalah draf. Tinjau kembali isi dan rujukan sebelum digunakan.</div>
     </aside>
@@ -811,7 +832,7 @@ function pageHead(heading, description) {
 function renderDashboard() {
   setRoute('dashboard', 'Dashboard');
   const documents = state.documents.filter(doc => !doc.deleted);
-  const tokenBalance = state.user.tokenBalance || 0; // Mengambil sisa saldo token pengguna
+  const tokenBalance = state.user.tokenBalance || 0; 
 
   const stats = [
     ['Sisa Saldo Token', tokenBalance.toLocaleString('id-ID')],
@@ -835,12 +856,25 @@ function renderDashboard() {
       <p>Mulai dari perencanaan hingga refleksi. Buat draf perangkat ajar, sesuaikan isinya, lalu simpan dalam satu ruang kerja.</p>
       <div class="row">
         ${button('✦ Buat dokumen baru', 'navigate', 'data-route="category" data-category="perencanaan"')}
-        <a href="https://wa.me/6281234567890?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" class="btn btn-outline" style="border-color: #10b981; color: #10b981; text-decoration: none;">
-          + Beli / Top-Up Token
-        </a>
       </div>
     </section>
-    <div class="grid">${stats.map(([name, value]) => `<div class="card"><div class="stat-label">${name}</div><div class="stat-number" style="${name === 'Sisa Saldo Token' ? 'color: #10b981;' : ''}">${escapeHTML(value)}</div></div>`).join('')}</div>
+    
+    <!-- GRID STATISTIK DIUBAH MENJADI 2x2 -->
+    <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 20px;">
+      ${stats.map(([name, value]) => `
+        <div class="card" style="position: relative; margin-bottom: 0;">
+          <div class="stat-label">${name}</div>
+          <div class="stat-number" style="${name === 'Sisa Saldo Token' ? 'color: #10b981;' : ''}">${escapeHTML(value)}</div>
+          ${name === 'Sisa Saldo Token' ? `
+            <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="position: absolute; top: 16px; right: 16px; background: #ecfdf5; color: #10b981; border: 1px solid #10b981; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Top-Up Saldo Token">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 
+              Top-Up
+            </a>
+          ` : ''}
+        </div>
+      `).join('')}
+    </div>
+
     <section><h2 class="section-title">Apa yang ingin Anda buat?</h2><div class="grid">${cards}</div></section>
     <div class="notice">Verifikasi CP, regulasi, perhitungan, dan kalender pendidikan sebelum dipakai. Hindari memasukkan data pribadi siswa ke layanan AI.</div>
   </div>`;
