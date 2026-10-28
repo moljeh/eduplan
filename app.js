@@ -860,17 +860,21 @@ function renderDashboard() {
     </section>
     
     <!-- GRID STATISTIK DIUBAH MENJADI 2x2 -->
-    <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 20px;">
+<div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 20px;">
       ${stats.map(([name, value]) => `
-        <div class="card" style="position: relative; margin-bottom: 0;">
-          <div class="stat-label">${name}</div>
-          <div class="stat-number" style="${name === 'Sisa Saldo Token' ? 'color: #10b981;' : ''}">${escapeHTML(value)}</div>
-          ${name === 'Sisa Saldo Token' ? `
-            <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="position: absolute; top: 16px; right: 16px; background: #ecfdf5; color: #10b981; border: 1px solid #10b981; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" title="Top-Up Saldo Token">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 
-              Top-Up
-            </a>
-          ` : ''}
+        <div class="card" style="position: relative; margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+              <div class="stat-label" style="margin-bottom: 8px;">${name}</div>
+              ${name === 'Sisa Saldo Token' ? `
+                <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="background: #ecfdf5; color: #10b981; border: 1px solid #10b981; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;" title="Top-Up Saldo Token">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 
+                  Top-Up
+                </a>
+              ` : ''}
+            </div>
+            <div class="stat-number" style="${name === 'Sisa Saldo Token' ? 'color: #10b981;' : ''}">${escapeHTML(value)}</div>
+          </div>
         </div>
       `).join('')}
     </div>
