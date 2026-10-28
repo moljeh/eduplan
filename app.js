@@ -432,10 +432,19 @@ async function api(action, params = {}) {
         await sendPasswordResetEmail(auth, params.email);
         return true;
       
-	 case 'register':
+	case 'register':
         // 1. Buat akun di sistem autentikasi Firebase (mengamankan password)
         const userCredential = await createUserWithEmailAndPassword(auth, params.email, params.password);
         const newUser = userCredential.user;
+        
+        // --- CEK PENGATURAN BONUS DARI ADMIN ---
+        const settingsSnapReg = await getDoc(doc(db, "Settings", "global"));
+        let initialToken = 0; // Default awal adalah 0
+        if (settingsSnapReg.exists()) {
+          const s = settingsSnapReg.data();
+          // Jika tombol On, ambil angka bonusnya
+          if (s.bonusEnabled) initialToken = Number(s.bonusAmount) || 0;
+        }
         
         // 2. Simpan profil lengkapnya ke Firestore Database
         const registerData = { 
@@ -445,7 +454,7 @@ async function api(action, params = {}) {
           whatsapp: params.whatsapp,
           role: 'guru', // Default pendaftar baru adalah guru
           active: true, // Atau false jika butuh persetujuan admin dulu
-          tokenBalance: 0, // Bonus token awal jika ada
+          tokenBalance: initialToken, // <--- Otomatis terisi sesuai pengaturan admin
           dailyQuota: 10
         };
         await setDoc(doc(db, "Users", params.email), registerData);
@@ -546,13 +555,14 @@ async function api(action, params = {}) {
         });
 
        const settingsSnapAdmin = await getDoc(doc(db, "Settings", "global"));
-        const adminLimit = settingsSnapAdmin.exists() ? settingsSnapAdmin.data().dailyLimit : 10;
+       // --- TAMBAHAN: Ambil data bonusEnabled dan bonusAmount ---
+       const adminSettings = settingsSnapAdmin.exists() ? settingsSnapAdmin.data() : { dailyLimit: 10, bonusEnabled: false, bonusAmount: 0 };
 
         // Ambil data log dari Firebase Firestore
         const logsSnap = await getDocs(collection(db, "Logs"));
         const logsList = logsSnap.docs.map(d => d.data()).sort((a, b) => b.created - a.created).slice(0, 200);
 
-        return { users: usersList, providers: finalProv, settings: { dailyLimit: adminLimit }, logs: logsList };
+        return { users: usersList, providers: finalProv, settings: adminSettings, logs: logsList };
 
       case 'saveProvider':
         const provRef = doc(db, "Providers", params.id);
@@ -749,7 +759,12 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
 
       case 'saveSettings':
         const settingsRef = doc(db, "Settings", "global");
-        await setDoc(settingsRef, { dailyLimit: Number(params.dailyLimit) }, { merge: true });
+        // --- TAMBAHAN: Simpan nilai bonus ke Firebase ---
+        await setDoc(settingsRef, { 
+          dailyLimit: Number(params.dailyLimit),
+          bonusEnabled: params.bonusEnabled,
+          bonusAmount: Number(params.bonusAmount)
+        }, { merge: true });
         return true;
 		
 
@@ -2313,9 +2328,14 @@ function renderSettings() {
     <div class="notice">API key disimpan dengan aman di Firestore. Tes koneksi dapat dikenai biaya oleh provider.</div>
     <div class="provider-grid">${providers}</div>
     <form class="card" data-form="settings">
-      <h2>Kuota percobaan generate</h2>
-      ${field('dailyLimit', 'Maksimum percobaan per akun per hari WIB (1–500)', state.admin.settings.dailyLimit, {type: 'number', required: true})}
-      <p class="muted">Percobaan yang gagal tetap dihitung. Kuota ini bukan batas tagihan uang/token. Tes koneksi hanya tersedia bagi admin dan tidak masuk hitungan generate guru.</p>
+      <h2>Pengaturan Global</h2>
+      ${field('dailyLimit', 'Maksimum percobaan per akun per hari WIB (1–500)', state.admin.settings.dailyLimit || 10, {type: 'number', required: true})}
+      
+      <h2 style="margin-top: 32px;">Bonus Token Pengguna Baru</h2>
+      ${check('bonusEnabled', 'Aktifkan pemberian token gratis otomatis untuk pendaftar baru', state.admin.settings.bonusEnabled)}
+     ${field('bonusAmount', 'Jumlah Token Gratis (Misal: 20.000)', (state.admin.settings.bonusAmount || 0).toLocaleString('id-ID'), {type: 'text'})}
+      
+      <p class="muted mt-20">Percobaan yang gagal tetap dihitung. Kuota percobaan bukan batas tagihan token provider.</p>
       <button class="btn btn-primary" type="submit">Simpan pengaturan</button>
     </form>
   </div>`;
@@ -2357,25 +2377,30 @@ async function testProvider(id) {
 
 async function saveSettings(form) {
   const values = formValues(form);
+  values.bonusEnabled = form.elements.bonusEnabled.checked;
+  
+  // --- TAMBAHAN: Bersihkan titik ribuan dan ubah kembali jadi angka murni ---
+  values.bonusAmount = Number(String(values.bonusAmount).replace(/\./g, '')) || 0;
+
   const accepted = await EduNotify.ask({
-    title: 'Ubah batas generate harian?',
-    message: `Batas baru: ${values.dailyLimit} percobaan per akun per hari WIB.\nBatas ini bukan pembatas tagihan uang atau token provider.`,
-    confirmText: 'Simpan kuota', cancelText: 'Batal', icon: '⚙'
+    title: 'Simpan pengaturan global?',
+    message: `Batas percobaan harian: ${values.dailyLimit}x.\nBonus Token Baru: ${values.bonusEnabled ? values.bonusAmount.toLocaleString('id-ID') + ' Token (Aktif)' : 'Nonaktif'}.`,
+    confirmText: 'Simpan', cancelText: 'Batal', icon: '⚙'
   });
+  
   if (!accepted) return;
   await run(async () => {
     await api('saveSettings', values);
     
-    // Kirim catatan ke Log Aktivitas
     await api('logActivity', { 
       action: 'Ubah Pengaturan', 
-      target: `Batas generate harian diubah menjadi ${values.dailyLimit}` 
+      target: `Batas generate: ${values.dailyLimit}, Bonus Pendaftar: ${values.bonusEnabled ? 'ON ('+values.bonusAmount+')' : 'OFF'}` 
     });
     
     state.admin = await api('adminData');
     applyBoot(await api('boot'));
     renderSettings();
-    showToast('Batas penggunaan berhasil diperbarui.');
+    showToast('Pengaturan berhasil diperbarui.');
   }, 'Menyimpan pengaturan...');
 }
 
@@ -2489,6 +2514,7 @@ function onSubmit(event) {
 
 function onInput(event) {
   const target = event.target;
+  
   if (target.closest('[data-form="save-document"]')) {
     state.dirty = true;
     $('#editor-status').textContent = 'Perubahan belum disimpan';
@@ -2501,6 +2527,16 @@ function onInput(event) {
     state.filters.query = target.value;
     state.filters.page = 1;
     renderDocumentResults();
+  }
+  
+  // --- TAMBAHAN: OTOMATIS FORMAT RIBUAN SAAT MENGETIK BONUS ---
+  if (target.name === 'bonusAmount') {
+    let rawValue = target.value.replace(/\D/g, ''); // Hapus huruf/simbol selain angka
+    if (rawValue) {
+      target.value = Number(rawValue).toLocaleString('id-ID'); // Format ke ribuan Indonesia
+    } else {
+      target.value = '';
+    }
   }
 }
 
