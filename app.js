@@ -258,12 +258,106 @@ function showToast(message, error = false) {
   EduNotify.toast(message, {type: error ? 'error' : 'success'});
 }
 
-function setBusy(value, message = 'Memproses...') {
-  state.busy = value;
-  $('#loading').hidden = !value;
-  $('#loading-message').textContent = message;
-  $('#app').setAttribute('aria-busy', String(value));
+
+
+let progressInterval = null;
+
+function setBusy(isBusy, message = 'Memproses...') {
+  state.busy = isBusy;
+  let overlay = document.getElementById('busy-overlay');
+  
+  // 1. Buat wadah overlay jika belum ada
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'busy-overlay';
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999;';
+    document.body.appendChild(overlay);
+  }
+
+  // 2. JIKA LOADING DIMULAI
+  if (isBusy) {
+    // Deteksi cerdas: Apakah ini proses pembuatan dokumen AI?
+    const textLower = message.toLowerCase();
+    const isGenerating = textLower.includes('menyusun dokumen') || textLower.includes('generate');
+
+    if (isGenerating) {
+      // MODE A: LOADING PERSENTASE (Khusus 40 Menu Dokumen)
+      overlay.innerHTML = `
+        <div style="background: white; padding: 32px 24px; border-radius: 16px; text-align: center; width: 90%; max-width: 340px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+          <div style="margin-bottom: 20px; font-size: 0.95rem; font-weight: 600; color: #1e293b; line-height: 1.4;">${message}</div>
+          <div style="background: #e2e8f0; border-radius: 99px; height: 8px; width: 100%; overflow: hidden; margin-bottom: 10px;">
+            <div id="busy-progress-bar" style="background: var(--primary-color, #4f46e5); width: 0%; height: 100%; transition: width 0.4s ease-out; border-radius: 99px;"></div>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+             <div id="busy-progress-text" style="font-size: 0.875rem; font-weight: bold; color: var(--primary-color, #4f46e5);">0%</div>
+             <div id="busy-progress-status" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Memulai AI...</div>
+          </div>
+          <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 16px;">Mohon tunggu dan jangan mengirim ulang permintaan.</div>
+        </div>
+      `;
+      
+      let percent = 0;
+      if (progressInterval) clearInterval(progressInterval);
+      progressInterval = setInterval(() => {
+        if (percent < 95) {
+          let increment = Math.random() * 8 + 2; 
+          if (percent > 50) increment = Math.random() * 4 + 1;
+          if (percent > 85) increment = Math.random() * 1.5;
+          percent += increment;
+          if (percent > 95) percent = 95;
+          
+          const currentPercent = Math.floor(percent);
+          const bar = document.getElementById('busy-progress-bar');
+          const text = document.getElementById('busy-progress-text');
+          const status = document.getElementById('busy-progress-status');
+          
+          if (bar && text && status) {
+            bar.style.width = currentPercent + '%';
+            text.textContent = currentPercent + '%';
+            if (currentPercent > 15 && currentPercent < 45) status.textContent = 'Menghubungkan ke AI...';
+            else if (currentPercent >= 45 && currentPercent < 80) status.textContent = 'Menyusun dokumen...';
+            else if (currentPercent >= 80) status.textContent = 'Merapikan format...';
+          }
+        }
+      }, 600);
+
+    } else {
+      // MODE B: LOADING SPINNER BIASA (Untuk Login, Admin, Hapus, dll)
+      if (progressInterval) clearInterval(progressInterval);
+      overlay.innerHTML = `
+        <div style="background: white; padding: 24px 32px; border-radius: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+          <style>
+            @keyframes edu-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+            .edu-spinner { width: 36px; height: 36px; border: 4px solid #e0e7ff; border-top: 4px solid var(--primary-color, #4f46e5); border-radius: 50%; animation: edu-spin 1s linear infinite; margin-bottom: 16px; }
+          </style>
+          <div class="edu-spinner"></div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${message}</div>
+        </div>
+      `;
+    }
+    overlay.style.display = 'flex';
+    
+  // 3. JIKA LOADING SELESAI
+  } else {
+    const bar = document.getElementById('busy-progress-bar');
+    const text = document.getElementById('busy-progress-text');
+    const status = document.getElementById('busy-progress-status');
+    
+    if (bar && text && status) {
+      // Jika mode persentase, selesaikan ke 100% dulu sebelum ditutup
+      if (progressInterval) clearInterval(progressInterval);
+      bar.style.width = '100%';
+      text.textContent = '100%';
+      status.textContent = 'Selesai!';
+      setTimeout(() => { if (overlay) overlay.style.display = 'none'; }, 500);
+    } else {
+      // Jika mode spinner biasa, langsung tutup tanpa jeda
+      if (overlay) overlay.style.display = 'none';
+    }
+  }
 }
+
+
 
 async function run(task, message) {
   if (state.busy) return null;
@@ -689,6 +783,13 @@ function clearSession() {
   document.body.classList.remove('menu-open');
 }
 
+
+
+
+
+
+
+
 function renderLogin() {
   $('#app').innerHTML = `
     <main class="login" id="content">
@@ -902,10 +1003,20 @@ function renderShell() {
     </aside>
     
     <main class="main" style="display: flex; flex-direction: column; min-height: 100vh;">
-      <header class="topbar">
-        <div class="row">
+     
+	<header class="topbar">
+        <div class="row" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
           ${button('☰', 'toggle-menu', 'aria-label="Buka menu"', 'btn-outline btn-icon mobile-only')}
-          <div class="breadcrumb">Workspace / <span id="breadcrumb">Dashboard</span></div>
+          <div class="breadcrumb" style="margin-right: 4px;">Workspace / <span id="breadcrumb">Dashboard</span></div>
+          
+          <!-- LENCANA TOTAL GURU AKTIF DI TOPBAR -->
+          <span id="topbar-user-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: rgba(16, 185, 129, 0.1); border-radius: 99px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px; color: #10b981; white-space: nowrap; transition: all 0.3s ease;">
+            <style>@keyframes edu-spin { 100% { transform: rotate(360deg); } }</style>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: edu-spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
+            MEMUAT...
+          </span>
+          <!-- ==================================== -->
+          
         </div>
         <div class="user-chip">
           ${renderRoleAvatar(user.role)}
@@ -941,6 +1052,34 @@ function renderShell() {
         </footer>
       </div>
     </main>`;
+	
+	
+	fetchTopbarUserCount();
+}
+
+
+
+// Fungsi mengambil total pengguna secara realtime untuk Topbar
+async function fetchTopbarUserCount() {
+  try {
+    const usersSnap = await getDocs(collection(db, 'Users'));
+    let activeCount = 0;
+    usersSnap.forEach(docSnap => {
+      if (docSnap.data().active) activeCount++;
+    });
+    
+    const badge = document.getElementById('topbar-user-badge');
+    if (badge) {
+      badge.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 
+        ${activeCount} GURU AKTIF
+      `;
+    }
+  } catch (error) {
+    console.warn("Gagal memuat jumlah pengguna:", error);
+    const badge = document.getElementById('topbar-user-badge');
+    if (badge) badge.style.display = 'none'; // Sembunyikan jika error agar header tetap bersih
+  }
 }
 
 function setRoute(route, text, category = '') {
@@ -1025,7 +1164,7 @@ function renderDashboard() {
     </button>`).join('');
     
   $('#content').innerHTML = `<div class="stack">
-    <section class="hero">
+   <section class="hero">
       <span class="eyebrow">✦ AI TEACHING CO-PILOT</span>
       <h1>Selamat berkarya, ${escapeHTML(state.user.name)}.</h1>
       <p>Mulai dari perencanaan hingga refleksi. Buat draf perangkat ajar, sesuaikan isinya, lalu simpan dalam satu ruang kerja.</p>
@@ -1056,6 +1195,34 @@ function renderDashboard() {
     <section><h2 class="section-title">Apa yang ingin Anda buat?</h2><div class="grid">${cards}</div></section>
     <div class="notice">Verifikasi CP, regulasi, perhitungan, dan kalender pendidikan sebelum dipakai. Hindari memasukkan data pribadi siswa ke layanan AI.</div>
   </div>`;
+
+  // Panggil fungsi untuk mengambil data pengguna secara realtime
+  fetchDashboardUserCount();
+}
+
+// Fungsi baru untuk mengambil total pengguna di Dashboard
+// Fungsi baru untuk mengambil total pengguna di Dashboard
+async function fetchDashboardUserCount() {
+  try {
+    const usersSnap = await getDocs(collection(db, 'Users'));
+    let activeCount = 0;
+    usersSnap.forEach(docSnap => {
+      if (docSnap.data().active) activeCount++;
+    });
+    
+    const badge = document.getElementById('dashboard-user-badge');
+    if (badge) {
+      // Ganti animasi loading menjadi ikon "Users" (Orang) statis
+      badge.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 
+        ${activeCount} GURU
+      `;
+    }
+  } catch (error) {
+    console.warn("Gagal memuat jumlah pengguna:", error);
+    const badge = document.getElementById('dashboard-user-badge');
+    if (badge) badge.style.display = 'none'; // Sembunyikan jika error agar tetap bersih
+  }
 }
 
 function renderCategory(key) {
