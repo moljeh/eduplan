@@ -812,11 +812,11 @@ function renderLogin() {
         <div class="login-box" id="login-form-container">
           <h1>Selamat datang 👋</h1>
           <p class="muted">Masuk ke ruang kerja dengan email dan sandi Anda.</p>
-          <form data-form="login">
-            ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, autocomplete: 'email'})}
+         <form data-form="login">
+            ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, autocomplete: 'email', placeholder: 'Masukkan email'})}
 <label class="field" style="position: relative;">
   <span>Kata sandi</span>
-  <input name="password" type="password" required maxlength="100" style="padding-right: 40px;">
+  <input name="password" type="password" required maxlength="100" placeholder="Masukkan password" style="padding-right: 40px;">
   <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
   </button>
@@ -839,14 +839,20 @@ function renderLogin() {
           <h1>Buat Akun Baru 🚀</h1>
           <p class="muted">Lengkapi data diri Anda untuk membuat ruang kerja.</p>
           <form data-form="register">
-            <div class="form-grid">
-              ${field('name', 'Nama lengkap', '', {required: true, max: 100, full: true})}
-              ${field('school', 'Nama instansi/sekolah', '', {required: true, max: 150})}
-              ${field('whatsapp', 'No. WhatsApp', '', {type: 'tel', required: true, max: 20, placeholder: '08123...'})}
-              ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, full: true})}
+           
+		   
+		   
+		   <div class="form-grid">
+              ${field('name', 'Nama lengkap', '', {required: true, max: 100, full: true, placeholder: 'Masukkan nama lengkap'})}
+              ${field('school', 'Nama instansi/sekolah', '', {required: true, max: 150, placeholder: 'Masukkan nama sekolah'})}
+              ${field('whatsapp', 'No. WhatsApp', '', {type: 'tel', required: true, max: 20, placeholder: 'Contoh: 08123456789'})}
+              ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, full: true, placeholder: 'Masukkan email'})}
 <label class="field span-2" style="position: relative;">
   <span>Buat kata sandi</span>
-  <input name="password" type="password" required maxlength="100" placeholder="Minimal 6 karakter" style="padding-right: 40px;">
+  <input name="password" type="password" required maxlength="100" placeholder="Masukkan password (minimal 6 karakter)" style="padding-right: 40px;">
+		   
+		   
+		   
   <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
   </button>
