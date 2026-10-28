@@ -268,12 +268,58 @@ function setBusy(value, message = 'Memproses...') {
 async function run(task, message) {
   if (state.busy) return null;
   setBusy(true, message);
-  try { return await task(); }
+  try { 
+    return await task(); 
+  }
   catch (error) {
-    showToast(error.message, true);
-    if (error.code === 'AUTH') { clearSession(); renderLogin(); }
+    let errorMsg = error.message || 'Terjadi kesalahan sistem.';
+    
+    // --- TRANSLASI PESAN ERROR FIREBASE & JARINGAN AGAR LEBIH PROFESIONAL ---
+    if (error.code) {
+      switch (error.code) {
+        case 'auth/invalid-credential':
+        case 'auth/user-not-found':
+        case 'auth/wrong-password':
+          errorMsg = 'Alamat email atau kata sandi tidak sesuai. Silakan periksa kembali.';
+          break;
+        case 'auth/network-request-failed':
+          errorMsg = 'Koneksi terputus. Pastikan perangkat Anda terhubung ke internet lalu coba lagi.';
+          break;
+        case 'auth/email-already-in-use':
+          errorMsg = 'Alamat email ini sudah terdaftar. Silakan langsung masuk ke akun Anda.';
+          break;
+        case 'auth/weak-password':
+          errorMsg = 'Kata sandi terlalu lemah. Harap gunakan minimal 6 karakter demi keamanan.';
+          break;
+        case 'auth/too-many-requests':
+          errorMsg = 'Akses ditangguhkan sementara karena terlalu banyak percobaan gagal. Silakan coba lagi nanti.';
+          break;
+        case 'auth/invalid-email':
+          errorMsg = 'Format alamat email tidak valid. Pastikan penulisan email sudah benar.';
+          break;
+        case 'permission-denied':
+          errorMsg = 'Akses ditolak. Anda tidak memiliki izin untuk melakukan tindakan ini.';
+          break;
+      }
+    } 
+    // Tangani error jaringan umum dari sistem (jika bukan dari Firebase)
+    else if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+      errorMsg = 'Gagal menghubungi server. Silakan periksa koneksi internet Anda.';
+    }
+
+    // Tampilkan notifikasi yang sudah disesuaikan
+    showToast(errorMsg, true);
+    
+    // Jika sesi habis, kembalikan ke halaman login
+    if (error.code === 'AUTH' || errorMsg.includes('Sesi tidak valid')) { 
+      clearSession(); 
+      renderLogin(); 
+    }
+    
     return null;
-  } finally { setBusy(false); }
+  } finally { 
+    setBusy(false); 
+  }
 }
 
 function formValues(form) { return Object.fromEntries(new FormData(form).entries()); }
@@ -716,7 +762,7 @@ function renderLogin() {
         <!-- TAMBAHAN FOOTER LOGIN -->
         <div class="login-footer" style="width: 100%; max-width: 430px; margin-top: 40px; margin-bottom: -20px;">
           EduPlan AI &copy; ${new Date().getFullYear()}<br>
-          Dirancang oleh <a href="https://www.tiktok.com/@putramadasa" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Arom Kobama</a>
+          Dikembangkan oleh <a href="https://www.tiktok.com/@putramadasa" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Tim EduPlan AI</a>
         </div>
 
       </section>
@@ -879,13 +925,13 @@ function renderShell() {
                <span>&copy; ${new Date().getFullYear()}</span>
             </div>
             
-            <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+           <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
                <!-- Badge Versi dihapus sesuai permintaan -->
                
                <span style="display: flex; align-items: center; gap: 6px;">
-                 Dirancang oleh 
+                 Dikembangkan oleh 
                  <a href="https://www.tiktok.com/@putramadasa" target="_blank" rel="noopener noreferrer" style="color: var(--primary-color, #4f46e5); text-decoration: none; font-weight: 600; display: flex; align-items: center; gap: 4px; transition: opacity 0.2s;">
-                   Arom Kobama
+                   Tim EduPlan AI
                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
                  </a>
                </span>
