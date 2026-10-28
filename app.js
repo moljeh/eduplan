@@ -854,27 +854,24 @@ function renderDashboard() {
       <span class="eyebrow">ASISTEN PERANGKAT AJAR</span>
       <h1>Selamat berkarya, ${escapeHTML(state.user.name)}.</h1>
       <p>Mulai dari perencanaan hingga refleksi. Buat draf perangkat ajar, sesuaikan isinya, lalu simpan dalam satu ruang kerja.</p>
-      <div class="row">
+      
+      <!-- TOMBOL BUAT DOKUMEN & TOP-UP DISEJAJARKAN DI SINI -->
+      <div class="row" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
         ${button('✦ Buat dokumen baru', 'navigate', 'data-route="category" data-category="perencanaan"')}
+        
+        <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4); padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(5px); transition: background 0.2s;" title="Top-Up Saldo Token">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 
+          Top-Up Saldo
+        </a>
       </div>
     </section>
     
-    <!-- GRID STATISTIK DIUBAH MENJADI 2x2 -->
-<div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 20px;">
+    <!-- KARTU STATISTIK KEMBALI BERSIH 2x2 TANPA TOMBOL MENUTUPI TEKS -->
+    <div class="grid" style="grid-template-columns: repeat(2, 1fr); gap: 16px;">
       ${stats.map(([name, value]) => `
-        <div class="card" style="position: relative; margin-bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
-          <div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
-              <div class="stat-label" style="margin-bottom: 8px;">${name}</div>
-              ${name === 'Sisa Saldo Token' ? `
-                <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="background: #ecfdf5; color: #10b981; border: 1px solid #10b981; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; flex-shrink: 0;" title="Top-Up Saldo Token">
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 
-                  Top-Up
-                </a>
-              ` : ''}
-            </div>
-            <div class="stat-number" style="${name === 'Sisa Saldo Token' ? 'color: #10b981;' : ''}">${escapeHTML(value)}</div>
-          </div>
+        <div class="card" style="margin-bottom: 0; padding: 16px;">
+          <div class="stat-label" style="font-size: 0.8rem; margin-bottom: 6px; color: #64748b;">${name}</div>
+          <div class="stat-number" style="font-size: 1.6rem; font-weight: bold; ${name === 'Sisa Saldo Token' ? 'color: #10b981;' : ''}">${escapeHTML(value)}</div>
         </div>
       `).join('')}
     </div>
