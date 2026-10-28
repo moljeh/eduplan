@@ -1004,24 +1004,34 @@ function renderShell() {
     
     <main class="main" style="display: flex; flex-direction: column; min-height: 100vh;">
      
-	<header class="topbar">
-        <div class="row" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+	<header class="topbar" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; overflow: hidden;">
+        
+        <!-- Wadah Kiri: Tombol Menu -->
+        <div class="row" style="display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; min-width: 0; overflow: hidden;">
           ${button('☰', 'toggle-menu', 'aria-label="Buka menu"', 'btn-outline btn-icon mobile-only')}
-          <div class="breadcrumb" style="margin-right: 4px;">Workspace / <span id="breadcrumb">Dashboard</span></div>
           
-          <!-- LENCANA TOTAL GURU AKTIF DI TOPBAR -->
+          <!-- TEKS BREADCRUMB DISEMBUNYIKAN (Agar fungsi setRoute tidak error) -->
+          <span id="breadcrumb" style="display: none;">Dashboard</span>
+        </div>
+        
+        <!-- Wadah Kanan: Lencana Guru Aktif & Profil User -->
+        <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+          
+          <!-- LENCANA GURU AKTIF (Dipindah sebelum profil) -->
           <span id="topbar-user-badge" style="display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; background: rgba(16, 185, 129, 0.1); border-radius: 99px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.5px; color: #10b981; white-space: nowrap; transition: all 0.3s ease;">
             <style>@keyframes edu-spin { 100% { transform: rotate(360deg); } }</style>
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="animation: edu-spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"></path></svg>
             MEMUAT...
           </span>
-          <!-- ==================================== -->
-          
+
+          <!-- PROFIL USER -->
+          <div class="user-chip" style="margin-left: 0;">
+            ${renderRoleAvatar(user.role)}
+            <div class="user-label"><span>${escapeHTML(user.name)}</span><small>${user.role === 'admin' ? 'Administrator' : 'Guru'}</small></div>
+          </div>
+
         </div>
-        <div class="user-chip">
-          ${renderRoleAvatar(user.role)}
-          <div class="user-label"><span>${escapeHTML(user.name)}</span><small>${user.role === 'admin' ? 'Administrator' : 'Guru'}</small></div>
-        </div>
+        
       </header>
       
       <div class="content" id="content" tabindex="-1" style="flex: 1;"></div>
