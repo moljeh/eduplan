@@ -516,6 +516,12 @@ async function api(action, params = {}) {
             title: 'Bahan & Media', 
             icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`, 
             items: ['bahan_bacaan', 'skenario_video', 'naskah_podcast', 'slide_presentasi', 'ide_games', 'flashcard', 'poster_edukasi', 'teks_pidato', 'teks_puisi', 'cerita_pendek', 'skenario_roleplay'] 
+          },
+		  
+		  refleksi: { 
+            title: 'Refleksi & Pengembangan', 
+            icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`, 
+            items: ['refleksi_pembelajaran', 'jurnal_evaluasi', 'catatan_tindak_lanjut', 'laporan_pengembangan'] 
           }
         };
 
@@ -1643,9 +1649,13 @@ let cells = tRow.split('|').slice(1, -1);
           inTable = false;
           isHeaderRow = true;
         }
-
-       let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
+let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
         
+        // --- TAMBAHAN: OTOMATIS UBAH KODE LATEX PECAHAN MENJADI BENTUK BIASA ---
+        cleanRow = cleanRow.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
+        cleanRow = cleanRow.replace(/[\$\\]/g, ''); // Hapus sisa tanda $ atau backslash
+        // ---------------------------------------------------------------------
+
         // [PERBAIKAN FINAL] Hapus tanda > yang menempel setelah bullet/angka SEBELUM diconvert ke HTML
         cleanRow = cleanRow.replace(/^([0-9]+\.|[a-z][\.\)]|\-|\*)\s*>\s*/i, '$1 ');
 
