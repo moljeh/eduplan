@@ -23,7 +23,7 @@
 'use strict';
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 const firebaseConfig = {
@@ -595,7 +595,6 @@ async function logout() {
  * Deskripsi: Merender kerangka tata letak utama (bilah sisi, header), 
  *            mengatur ikon pengguna, dan mengontrol pindah halaman.
  * ========================================================================== */
-
 /* ==========================================================================
  * KELOMPOK ANTARMUKA UTAMA & NAVIGASI (F22 - F28)
  * ========================================================================== */
@@ -756,11 +755,15 @@ function pageHead(heading, description) {
 function renderDashboard() {
   setRoute('dashboard', 'Dashboard');
   const documents = state.documents.filter(doc => !doc.deleted);
+  const tokenBalance = state.user.tokenBalance || 0; // Mengambil sisa saldo token pengguna
+
   const stats = [
+    ['Sisa Saldo Token', tokenBalance.toLocaleString('id-ID')],
     ['Dokumen tersimpan', documents.length],
     ['Provider AI aktif', state.providers.length],
     ['Percobaan generate hari ini', `${state.usage.used} / ${state.usage.limit}`]
   ];
+  
   const cards = Object.entries(state.catalog).map(([key, category]) => `
     <button type="button" class="card tile" data-action="navigate" data-route="category" data-category="${key}">
       <span class="tile-icon">${category.icon}</span>
@@ -768,14 +771,20 @@ function renderDashboard() {
       <p>${category.items.length} jenis dokumen untuk mendukung kegiatan pembelajaran.</p>
       <span class="tile-link">Buka generator →</span>
     </button>`).join('');
+    
   $('#content').innerHTML = `<div class="stack">
     <section class="hero">
       <span class="eyebrow">ASISTEN PERANGKAT AJAR</span>
       <h1>Selamat berkarya, ${escapeHTML(state.user.name)}.</h1>
       <p>Mulai dari perencanaan hingga refleksi. Buat draf perangkat ajar, sesuaikan isinya, lalu simpan dalam satu ruang kerja.</p>
-      ${button('✦ Buat dokumen baru', 'navigate', 'data-route="category" data-category="perencanaan"')}
+      <div class="row">
+        ${button('✦ Buat dokumen baru', 'navigate', 'data-route="category" data-category="perencanaan"')}
+        <a href="https://wa.me/6281234567890?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" class="btn btn-outline" style="border-color: #10b981; color: #10b981; text-decoration: none;">
+          + Beli / Top-Up Token
+        </a>
+      </div>
     </section>
-    <div class="grid">${stats.map(([name, value]) => `<div class="card"><div class="stat-label">${name}</div><div class="stat-number">${escapeHTML(value)}</div></div>`).join('')}</div>
+    <div class="grid">${stats.map(([name, value]) => `<div class="card"><div class="stat-label">${name}</div><div class="stat-number" style="${name === 'Sisa Saldo Token' ? 'color: #10b981;' : ''}">${escapeHTML(value)}</div></div>`).join('')}</div>
     <section><h2 class="section-title">Apa yang ingin Anda buat?</h2><div class="grid">${cards}</div></section>
     <div class="notice">Verifikasi CP, regulasi, perhitungan, dan kalender pendidikan sebelum dipakai. Hindari memasukkan data pribadi siswa ke layanan AI.</div>
   </div>`;
@@ -905,6 +914,7 @@ async function renderGenerator(type) {
   }
 }
 
+
 async function generate(form) {
   const values = formValues(form);
   let finalLevel = values.level_select || values.level;
@@ -915,15 +925,74 @@ async function generate(form) {
   delete params.level_custom;
 
   await run(async () => {
+    // 1. TENTUKAN TARIF TOKEN BERDASARKAN JENIS DOKUMEN
+    let tokenCost = 500; 
+    const docType = state.generatorType;
+
+    if (docType === 'rpp' || docType === 'modul_ajar') {
+      tokenCost = 1500; 
+    } else if (docType === 'prota' || docType === 'promes' || docType === 'atp' || docType === 'silabus') {
+      tokenCost = 1200;
+    } else if (docType === 'bank_soal' || docType === 'kisi_kisi' || docType === 'asesmen_sumatif') {
+      tokenCost = 1000;
+    } else if (docType === 'bahan_bacaan' || docType === 'slide_presentasi') {
+      tokenCost = 800;
+    }
+
+    // 2. CEK KETERSEDIAAN API KEY ADMIN
+    const providerId = params.provider || 'gemini';
+    const provRef = doc(db, "Providers", providerId);
+    const provSnap = await getDoc(provRef);
+    if (!provSnap.exists() || !provSnap.data().key) {
+       await window.Swal.fire('Sistem AI Belum Siap', `API Key untuk provider ${providerId} belum dikonfigurasi. Hubungi Admin.`, 'error');
+       return;
+    }
+
+    // 3. AMBIL DATA USER BERDASARKAN SESI TOKEN YANG AKTIF (Mencegah error akun tidak ditemukan)
+    const userIdentifier = state.token || state.user?.email;
+    const userRef = doc(db, 'Users', userIdentifier);
+    let userSnap = await getDoc(userRef);
+
+    // Cadangan: Jika tidak ketemu lewat token, cari berdasarkan email
+    if (!userSnap.exists() && state.user?.email) {
+       const altUserRef = doc(db, 'Users', state.user.email);
+       userSnap = await getDoc(altUserRef);
+    }
+
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      const currentBalance = data.tokenBalance || 0;
+      
+      if (currentBalance < tokenCost) {
+        await window.Swal.fire('Saldo Tidak Mencukupi', `Pembuatan dokumen ini memerlukan ${tokenCost} token.\nSaldo Anda saat ini: ${currentBalance.toLocaleString('id-ID')}.\n\nSilakan klik tombol Beli / Top-Up di Dashboard.`, 'warning');
+        return; 
+      }
+    } else {
+        await window.Swal.fire('Akses Ditolak', 'Akun tidak ditemukan di database. Silakan keluar (logout) lalu masuk kembali dengan email terdaftar.', 'error');
+        return;
+    }
+
+    // 4. CEK KUOTA KLIK HARIAN
+    const canGenerate = await checkQuotaBeforeGenerate(userIdentifier);
+    if (!canGenerate) return;
+
+    // 5. MINTA AI MEMBUAT DOKUMEN
     const result = await api('generate', params);
+    
+    // 6. POTONG SALDO TOKEN
+    await deductTokenAfterGenerate(userIdentifier, tokenCost);
+
+    // 7. TAMPILKAN HASIL
     state.editor = {doc: result.doc, text: result.text};
     state.usage = result.usage;
     state.documents.unshift(result.doc);
     state.dirty = false;
     renderEditor();
-    showToast('Draf berhasil dibuat dan disimpan. Tinjau kembali sebelum digunakan.');
-  }, 'AI sedang menyusun dokumen. Proses ini dapat memerlukan waktu...');
+    
+    window.Swal.fire('Berhasil', `Draf sukses dibuat! Saldo dipotong ${tokenCost} token.`, 'success');
+  }, 'Memeriksa kuota & menyusun dokumen...');
 }
+
 
 /* ==========================================================================
  * KELOMPOK EDITOR DOKUMEN & EKSPOR (F34 - F42)
@@ -1398,42 +1467,228 @@ async function saveProfile(form) {
   }, 'Menyimpan profil...');
 }
 
+
 /* ==========================================================================
  * KELOMPOK PANEL ADMINISTRATOR (F48 - F55)
  * Deskripsi: Area khusus admin untuk memanajemen pengguna, menyimpan 
  *            API Key, mengubah model, dan melihat log/kuota.
  * ========================================================================== */
-function renderUsers() {
+async function renderUsers() {
+  $('#content').innerHTML = `<div style="padding: 40px; text-align: center; color: #666;">Sedang memuat data pengguna...</div>`;
   setRoute('users', 'Manajemen pengguna');
-  const users = state.admin.users;
-  const rows = users.map(user => `
-    <tr>
-      <td><strong>${escapeHTML(user.name)}</strong><br><small class="muted">${escapeHTML(user.school)}</small></td>
-      <td>${escapeHTML(user.email)}</td><td>${badge(user.role)}</td>
-      <td>${badge(user.active ? 'Aktif' : 'Nonaktif', user.active ? 'badge-success' : 'badge-danger')}</td>
-      <td>${button('Ubah', 'edit-user', `data-id="${user.id}"`, 'btn-small')}</td>
-    </tr>`).join('');
-  $('#content').innerHTML = `<div class="stack">
-    ${pageHead('Manajemen pengguna', 'Daftarkan email guru/admin. Hanya akun aktif yang dapat masuk.')}
-    <div class="notice">Login tidak memverifikasi kepemilikan email. Orang yang mengetahui email admin dapat masuk sebagai admin. Gunakan hanya untuk lingkungan tepercaya.</div>
-    <form class="card" data-form="user" id="user-form">
-      <h2 id="user-form-heading">Tambah akun</h2>
-      <input type="hidden" name="id" value="">
-      <div class="form-grid">
-        ${field('email', 'Email', '', {type: 'email', required: true, max: 254})}
-        ${field('name', 'Nama', '', {required: true, max: 100})}
-        ${selectField('role', 'Peran', ['guru', 'admin'])}
-        ${field('school', 'Sekolah', '', {max: 200})}
+
+  try {
+    const usersSnap = await getDocs(collection(db, 'Users'));
+    let tableRows = '';
+    let no = 1;
+
+    usersSnap.forEach(docSnap => {
+      const u = docSnap.data();
+      const email = docSnap.id;
+      
+      const roleBadge = u.role === 'admin' 
+        ? '<span style="background: #e0e7ff; color: #4f46e5; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">Admin</span>' 
+        : '<span style="background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">Guru</span>';
+      
+      const quota = u.dailyQuota !== undefined ? u.dailyQuota : 20; 
+      const token = u.tokenBalance || 0;
+      const statusBadge = badge(u.active ? 'Aktif' : 'Nonaktif', u.active ? 'badge-success' : 'badge-danger');
+      
+      tableRows += `
+        <tr style="border-bottom: 1px solid #f3f4f6; transition: background 0.2s;">
+          <td style="padding: 16px 12px;">${no++}</td>
+          <td style="padding: 16px 12px;">
+             <strong style="color: #111;">${escapeHTML(u.name || 'Tanpa Nama')}</strong><br>
+             <small style="color: #6b7280;">${email}</small>
+          </td>
+          <td style="padding: 16px 12px;">${roleBadge}<br><div style="margin-top:4px;">${statusBadge}</div></td>
+          <td style="padding: 16px 12px; font-weight: 500;">${quota}x / Hari</td>
+          <td style="padding: 16px 12px; font-weight: bold; color: #10b981;">${token.toLocaleString('id-ID')}</td>
+          <td style="padding: 16px 12px; text-align: right;">
+            <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+              ${button('Ubah', 'edit-user', `data-id="${email}"`, 'btn-small')}
+              <button type="button" onclick="editUserQuota('${email}', ${quota})" style="padding: 6px 12px; background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
+                Edit Kuota
+              </button>
+              <button type="button" onclick="topUpUserToken('${email}')" style="padding: 6px 12px; background: #ecfdf5; color: #10b981; border: 1px solid #10b981; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
+                + Top-Up
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
+
+    $('#content').innerHTML = `
+      <div class="stack">
+        ${pageHead('Manajemen pengguna', 'Kelola batas klik harian, saldo token AI, dan daftarkan pengguna baru.')}
+        <div class="notice">Login tidak memverifikasi kepemilikan email. Orang yang mengetahui email admin dapat masuk sebagai admin. Gunakan hanya untuk lingkungan tepercaya.</div>
+        
+        <form class="card" data-form="user" id="user-form">
+          <h2 id="user-form-heading">Tambah akun</h2>
+          <input type="hidden" name="id" value="">
+          <div class="form-grid">
+            ${field('email', 'Email', '', {type: 'email', required: true, max: 254})}
+            ${field('name', 'Nama', '', {required: true, max: 100})}
+            ${selectField('role', 'Peran', ['guru', 'admin'])}
+            ${field('school', 'Sekolah', '', {max: 200})}
+          </div>
+          ${check('active', 'Akun aktif', true)}
+          <div class="row"><button class="btn btn-primary" type="submit">Simpan akun</button>${button('Form baru', 'new-user', '', 'btn-outline')}</div>
+        </form>
+
+        <div class="card table-wrap" style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead style="background: #f9fafb; border-bottom: 2px solid #e5e7eb; color: #374151;">
+              <tr>
+                <th style="padding: 16px 12px;">No</th>
+                <th style="padding: 16px 12px;">Identitas Pengguna</th>
+                <th style="padding: 16px 12px;">Status</th>
+                <th style="padding: 16px 12px;">Batas Klik</th>
+                <th style="padding: 16px 12px;">Saldo AI</th>
+                <th style="padding: 16px 12px; text-align: right;">Aksi</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows || '<tr><td colspan="6" style="text-align:center; padding: 32px; color: #6b7280;">Belum ada akun terdaftar.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
       </div>
-      ${check('active', 'Akun aktif', true)}
-      <div class="row"><button class="btn btn-primary" type="submit">Simpan akun</button>${button('Form baru', 'new-user', '', 'btn-outline')}</div>
-    </form>
-    <div class="card table-wrap"><table><thead><tr><th>NAMA / SEKOLAH</th><th>EMAIL</th><th>PERAN</th><th>STATUS</th><th>AKSI</th></tr></thead><tbody>${rows}</tbody></table></div>
-  </div>`;
+    `;
+  } catch (error) {
+    console.error("Gagal memuat pengguna:", error);
+    $('#content').innerHTML = `<div style="padding: 40px; text-align: center; color: #ef4444;">Gagal memuat data pengguna.</div>`;
+  }
+}
+
+window.editUserQuota = async function(email, currentQuota) {
+  const { value: amount } = await Swal.fire({
+    title: 'Edit Kuota Harian',
+    text: `Tentukan batas klik generate harian untuk ${email}:`,
+    input: 'number',
+    inputValue: currentQuota,
+    showCancelButton: true,
+    confirmButtonText: 'Simpan',
+    cancelButtonText: 'Batal',
+    inputValidator: (value) => {
+      if (value === '' || value < 0) return 'Masukkan angka yang valid!';
+    }
+  });
+
+  if (amount !== undefined) {
+    try {
+      await updateDoc(doc(db, 'Users', email), { dailyQuota: Number(amount) });
+      Swal.fire('Tersimpan!', 'Batas klik harian diperbarui.', 'success');
+      renderUsers(); 
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Gagal', 'Terjadi kendala saat menyimpan.', 'error');
+    }
+  }
+};
+
+window.topUpUserToken = async function(userEmail) {
+  const { value: amount } = await Swal.fire({
+    title: 'Top-Up Saldo Token',
+    html: `
+      <div style="text-align: left; margin-bottom: 8px; font-size: 0.9rem; color: #555;">Masukkan jumlah token untuk ${userEmail}:</div>
+      <input id="swal-input-token" class="swal2-input" placeholder="Contoh: 50000" style="margin: 0 auto; width: 80%;" autofocus>
+      <div id="swal-token-preview" style="margin-top: 8px; font-weight: bold; color: #10b981; font-size: 0.95rem;"></div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Top-Up',
+    cancelButtonText: 'Batal',
+    didOpen: () => {
+      // Fitur Auto-Format Titik Ribuan Secara Real-Time
+      const input = document.getElementById('swal-input-token');
+      const preview = document.getElementById('swal-token-preview');
+      
+      input.addEventListener('input', (e) => {
+        // Hapus semua karakter selain angka
+        let rawValue = e.target.value.replace(/\D/g, '');
+        if (rawValue) {
+          // Format ke bentuk ribuan dengan titik (ID Locale)
+          let formatted = Number(rawValue).toLocaleString('id-ID');
+          input.value = formatted;
+          preview.textContent = `Akan ditambahkan: ${formatted} Token`;
+        } else {
+          input.value = '';
+          preview.textContent = '';
+        }
+      });
+    },
+    preConfirm: () => {
+      const input = document.getElementById('swal-input-token').value;
+      // Bersihkan titik sebelum dikirim ke database angka murni
+      const rawNumber = Number(input.replace(/\./g, ''));
+      if (!rawNumber || rawNumber <= 0) {
+        Swal.showValidationMessage('Masukkan jumlah token yang valid!');
+      }
+      return rawNumber;
+    }
+  });
+
+  if (amount) {
+    try {
+      await updateDoc(doc(db, 'Users', userEmail), { tokenBalance: increment(Number(amount)) });
+      Swal.fire('Berhasil!', `Saldo ${Number(amount).toLocaleString('id-ID')} token berhasil ditambahkan.`, 'success');
+      renderUsers();
+    } catch (error) {
+      console.error(error);
+      Swal.fire('Gagal', 'Terjadi kesalahan sistem.', 'error');
+    }
+  }
+};
+
+async function checkQuotaBeforeGenerate(userEmail) {
+  try {
+    const userRef = doc(db, 'Users', userEmail);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      const data = snap.data();
+      const tokenBalance = data.tokenBalance || 0;
+      const dailyQuota = data.dailyQuota || 20; 
+      let usedToday = data.usedToday || 0;
+      const lastResetDate = data.lastResetDate || '';
+      const today = new Date().toLocaleDateString('id-ID');
+
+      // Reset kuota otomatis jika hari berganti
+      if (lastResetDate !== today) {
+         await updateDoc(userRef, { usedToday: 0, lastResetDate: today });
+         usedToday = 0; 
+      }
+      if (usedToday >= dailyQuota) {
+         await window.Swal.fire('Batas Harian', 'Batas klik harian Anda sudah habis. Silakan coba besok.', 'warning');
+         return false;
+      }
+      if (tokenBalance <= 0) {
+         await window.Swal.fire('Saldo Habis', 'Saldo token AI habis. Silakan hubungi admin untuk Top-Up.', 'error');
+         return false;
+      }
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Gagal cek kuota:", error);
+    return false;
+  }
+}
+
+async function deductTokenAfterGenerate(userEmail, usedTokens) {
+  try {
+    await updateDoc(doc(db, 'Users', userEmail), {
+      tokenBalance: increment(-usedTokens),
+      usedToday: increment(1)
+    });
+  } catch (error) {
+    console.error("Gagal memotong token:", error);
+  }
 }
 
 function editUser(id) {
-  const user = state.admin.users.find(item => item.id === id);
+  // Dalam setup baru kita, ID dokumen pengguna adalah email mereka
+  const user = state.admin.users.find(item => item.id === id || item.email === id);
   if (!user) return;
   const form = $('#user-form');
   ['id', 'email', 'name', 'school', 'role'].forEach(key => { form.elements[key].value = user[key] || ''; });
@@ -1454,6 +1709,8 @@ async function saveUser(form) {
   });
   if (!accepted) return;
   await run(async () => {
+    // Pada skema baru, pastikan id sama dengan email
+    if(!values.id) values.id = values.email; 
     await api('saveUser', values);
     state.admin = await api('adminData');
     renderUsers();
@@ -1573,6 +1830,8 @@ function renderLogs() {
     <div class="card table-wrap"><table><thead><tr><th>WAKTU</th><th>EMAIL</th><th>AKTIVITAS</th><th>TARGET</th></tr></thead><tbody>${rows || '<tr><td colspan="4">Belum ada aktivitas.</td></tr>'}</tbody></table></div>
   </div>`;
 }
+
+
 
 /* ==========================================================================
  * F56 | HALAMAN BANTUAN
