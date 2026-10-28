@@ -659,7 +659,9 @@ function renderLogin() {
         <div class="login-points"><span>Keamanan Standar Industri</span><span>Sistem Multi-AI</span><span>Cloud Terenkripsi</span></div>
       </section>
       
-      <section class="login-panel">
+     </section>
+
+      <section class="login-panel" style="flex-direction: column;">
         <div class="login-box" id="login-form-container">
           <h1>Selamat datang 👋</h1>
           <p class="muted">Masuk ke ruang kerja dengan email dan sandi Anda.</p>
@@ -710,6 +712,13 @@ function renderLogin() {
   <button type="button" style="background: transparent; border: none; color: #4f46e5; font-weight: 600; font-size: 0.9rem; cursor: pointer; padding: 0 0 0 4px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" onclick="document.getElementById('register-form-container').style.display='none'; document.getElementById('login-form-container').style.display='block';">Masuk di sini</button>
 </div>
         </div>
+        
+        <!-- TAMBAHAN FOOTER LOGIN -->
+        <div class="login-footer" style="width: 100%; max-width: 430px; margin-top: 40px; margin-bottom: -20px;">
+          EduPlan AI &copy; ${new Date().getFullYear()}<br>
+          Dirancang oleh <a href="https://www.tiktok.com/@putramadasa" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Arom Kobama</a>
+        </div>
+
       </section>
     </main>`;
 }
@@ -2077,12 +2086,7 @@ async function onClick(event) {
   if (!target || state.busy) return;
   const data = target.dataset;
   
-  switch (data.action) { // <-- TAMBAHKAN BARIS INI
-  
-  
-  
-  case 'forgot-password': return resetPasswordHandler();
-  
+  switch (data.action) {
     case 'toggle-password':
       const pwdInput = target.parentElement.querySelector('input[name="password"]');
       if (pwdInput) {
@@ -2095,10 +2099,12 @@ async function onClick(event) {
         target.innerHTML = isHidden ? iconEyeOff : iconEye;
       }
       return;
+case 'forgot-password': return resetPasswordHandler();
     case 'generator': return renderGenerator(data.type);
     case 'logout': return logout();
+    case 'navigate': return navigate(data.route, data.category);
     case 'theme': return toggleTheme();
-    case 'toggle-menu': 
+    case 'toggle-menu':
       if (document.body.classList.contains('menu-open')) {
         history.back(); 
       } else {
@@ -2121,7 +2127,7 @@ async function onClick(event) {
     case 'test-provider': return testProvider(data.id);
     case 'use-as-reference': 
       state.tempReference = document.querySelector('#editor-text').value;
-      showToast('Isi dokumen disimpan ke memori AI. Silakan pilih jenis dokumen selanjutnya (misal: Bank Soal).');
+      showToast('Isi dokumen disimpan ke memori AI. Silakan pilih jenis dokumen selanjutnya.');
       return navigate('dashboard');
     default: return;
   }
@@ -2132,8 +2138,9 @@ function onSubmit(event) {
   if (!form) return;
   event.preventDefault();
   if (state.busy) return;
- // Ganti baris handlers menjadi:
-  const handlers = {login, register, 'save-document': saveDocument, profile: saveProfile, user: saveUser, provider: saveProvider, settings: saveSettings};
+  
+  const handlers = {login, register, generate, 'save-document': saveDocument, profile: saveProfile, user: saveUser, provider: saveProvider, settings: saveSettings};
+  
   const handler = handlers[form.dataset.form];
   if (handler) handler(form);
 }
