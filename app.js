@@ -2110,40 +2110,57 @@ window.editUserQuota = async function(email, currentQuota) {
 
 window.topUpUserToken = async function(userEmail) {
   const { value: amount } = await Swal.fire({
-    title: 'Top-Up Saldo Token',
+    title: 'Kelola Saldo Token',
     html: `
-      <div style="text-align: left; margin-bottom: 8px; font-size: 0.9rem; color: #555;">Masukkan jumlah token untuk ${userEmail}:</div>
-      <input id="swal-input-token" class="swal2-input" placeholder="Contoh: 50000" style="margin: 0 auto; width: 80%;" autofocus>
-      <div id="swal-token-preview" style="margin-top: 8px; font-weight: bold; color: #10b981; font-size: 0.95rem;"></div>
+      <div style="text-align: left; margin-bottom: 8px; font-size: 0.9rem; color: #555;">
+        Ketik angka untuk <b>menambah</b>, atau gunakan tanda minus ( - ) di awal untuk <b>mengurangi</b> token ${userEmail}:
+      </div>
+      <input id="swal-input-token" class="swal2-input" placeholder="Contoh: 50000 atau -10000" style="margin: 0 auto; width: 80%; text-align: center;" autofocus>
+      <div id="swal-token-preview" style="margin-top: 8px; font-weight: bold; font-size: 0.95rem;"></div>
     `,
     showCancelButton: true,
-    confirmButtonText: 'Top-Up',
+    confirmButtonText: 'Simpan',
     cancelButtonText: 'Batal',
     didOpen: () => {
-      // Fitur Auto-Format Titik Ribuan Secara Real-Time
       const input = document.getElementById('swal-input-token');
       const preview = document.getElementById('swal-token-preview');
       
       input.addEventListener('input', (e) => {
-        // Hapus semua karakter selain angka
-        let rawValue = e.target.value.replace(/\D/g, '');
-        if (rawValue) {
-          // Format ke bentuk ribuan dengan titik (ID Locale)
-          let formatted = Number(rawValue).toLocaleString('id-ID');
-          input.value = formatted;
-          preview.textContent = `Akan ditambahkan: ${formatted} Token`;
+        // Izinkan tanda minus di depan dan karakter angka
+        let rawValue = e.target.value.replace(/[^\d\-]/g, '');
+        
+        // Pastikan tanda minus hanya boleh ada di paling depan
+        if (rawValue.indexOf('-') > 0) {
+            rawValue = rawValue.replace(/-/g, '');
+        }
+
+        if (rawValue && rawValue !== '-') {
+          let isNegative = rawValue.startsWith('-');
+          let cleanNum = rawValue.replace('-', '');
+          let formatted = Number(cleanNum).toLocaleString('id-ID');
+          
+          input.value = isNegative ? '-' + formatted : formatted;
+          
+          // Teks preview cerdas
+          if (isNegative) {
+            preview.textContent = `Akan dikurangi: ${formatted} Token`;
+            preview.style.color = '#ef4444'; // Warna merah
+          } else {
+            preview.textContent = `Akan ditambahkan: ${formatted} Token`;
+            preview.style.color = '#10b981'; // Warna hijau
+          }
         } else {
-          input.value = '';
+          input.value = rawValue;
           preview.textContent = '';
         }
       });
     },
     preConfirm: () => {
       const input = document.getElementById('swal-input-token').value;
-      // Bersihkan titik sebelum dikirim ke database angka murni
+      // Bersihkan titik ribuan sebelum dikirim
       const rawNumber = Number(input.replace(/\./g, ''));
-      if (!rawNumber || rawNumber <= 0) {
-        Swal.showValidationMessage('Masukkan jumlah token yang valid!');
+      if (isNaN(rawNumber) || rawNumber === 0) {
+        Swal.showValidationMessage('Masukkan angka yang valid!');
       }
       return rawNumber;
     }
@@ -2152,7 +2169,8 @@ window.topUpUserToken = async function(userEmail) {
   if (amount) {
     try {
       await updateDoc(doc(db, 'Users', userEmail), { tokenBalance: increment(Number(amount)) });
-      Swal.fire('Berhasil!', `Saldo ${Number(amount).toLocaleString('id-ID')} token berhasil ditambahkan.`, 'success');
+      const actionText = amount > 0 ? 'ditambahkan' : 'ditarik/dikurangi';
+      Swal.fire('Berhasil!', `Saldo berhasil ${actionText} sebanyak ${Math.abs(amount).toLocaleString('id-ID')} token.`, 'success');
       renderUsers();
     } catch (error) {
       console.error(error);
