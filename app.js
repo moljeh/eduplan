@@ -856,10 +856,12 @@ function renderDashboard() {
       <p>Mulai dari perencanaan hingga refleksi. Buat draf perangkat ajar, sesuaikan isinya, lalu simpan dalam satu ruang kerja.</p>
       
       <!-- TOMBOL BUAT DOKUMEN & TOP-UP DISEJAJARKAN DI SINI -->
-      <div class="row" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-        ${button('✦ Buat dokumen baru', 'navigate', 'data-route="category" data-category="perencanaan"')}
+      <div class="row" style="display: flex; gap: 10px; width: 100%; align-items: center;">
+        <button type="button" class="btn btn-primary" data-action="navigate" data-route="category" data-category="perencanaan" style="flex: 1; justify-content: center; white-space: nowrap; padding: 12px 14px; font-size: 0.9rem;">
+          ✦ Buat dokumen baru
+        </button>
         
-        <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4); padding: 10px 18px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; backdrop-filter: blur(5px); transition: background 0.2s;" title="Top-Up Saldo Token">
+        <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="flex: 1; background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4); padding: 12px 14px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; display: inline-flex; justify-content: center; align-items: center; gap: 6px; backdrop-filter: blur(5px); white-space: nowrap;" title="Top-Up Saldo Token">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 
           Top-Up Saldo
         </a>
