@@ -366,10 +366,14 @@ async function api(action, params = {}) {
           return provList.find(p => p.id === id) || { id, model: '', key: '', enabled: false, configured: false };
         });
 
-        const settingsSnapAdmin = await getDoc(doc(db, "Settings", "global"));
+       const settingsSnapAdmin = await getDoc(doc(db, "Settings", "global"));
         const adminLimit = settingsSnapAdmin.exists() ? settingsSnapAdmin.data().dailyLimit : 10;
 
-        return { users: usersList, providers: finalProv, settings: { dailyLimit: adminLimit }, logs: [] };
+        // Ambil data log dari Firebase Firestore
+        const logsSnap = await getDocs(collection(db, "Logs"));
+        const logsList = logsSnap.docs.map(d => d.data()).sort((a, b) => b.created - a.created).slice(0, 200);
+
+        return { users: usersList, providers: finalProv, settings: { dailyLimit: adminLimit }, logs: logsList };
 
       case 'saveProvider':
         const provRef = doc(db, "Providers", params.id);
@@ -567,6 +571,18 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
       case 'saveSettings':
         const settingsRef = doc(db, "Settings", "global");
         await setDoc(settingsRef, { dailyLimit: Number(params.dailyLimit) }, { merge: true });
+        return true;
+		
+
+     case 'logActivity':
+        const logRef = doc(collection(db, "Logs"));
+        await setDoc(logRef, {
+          id: logRef.id,
+          email: state.user.email,
+          action: params.action,
+          target: params.target,
+          created: Date.now()
+        });
         return true;
 
       case 'logout':
@@ -1904,6 +1920,13 @@ async function saveSettings(form) {
   if (!accepted) return;
   await run(async () => {
     await api('saveSettings', values);
+    
+    // Kirim catatan ke Log Aktivitas
+    await api('logActivity', { 
+      action: 'Ubah Pengaturan', 
+      target: `Batas generate harian diubah menjadi ${values.dailyLimit}` 
+    });
+    
     state.admin = await api('adminData');
     applyBoot(await api('boot'));
     renderSettings();
