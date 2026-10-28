@@ -1767,8 +1767,8 @@ async function renderUsers() {
       else totalTeachers++;
       
       const roleBadge = u.role === 'admin' 
-        ? '<span style="background: #e0e7ff; color: #4f46e5; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">Admin</span>' 
-        : '<span style="background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: bold;">Guru</span>';
+        ? '<span style="background: #e0e7ff; color: #4f46e5; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">Admin</span>' 
+        : '<span style="background: #f3f4f6; color: #4b5563; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">Guru</span>';
       
       const quota = u.dailyQuota !== undefined ? u.dailyQuota : 20; 
       const token = u.tokenBalance || 0;
@@ -1776,24 +1776,26 @@ async function renderUsers() {
       
       tableRows += `
         <tr style="border-bottom: 1px solid #f3f4f6; transition: background 0.2s;">
-          <td style="padding: 16px 12px;">${no++}</td>
-          <td style="padding: 16px 12px;">
-             <strong style="color: #111;">${escapeHTML(u.name || 'Tanpa Nama')}</strong><br>
-             <small style="color: #6b7280;">${email}</small>
+          <td data-label="No." style="padding: 16px 12px;">${no++}</td>
+         <td data-label="Identitas" style="padding: 16px 12px;">
+             <div>
+               <strong style="color: inherit;">${escapeHTML(u.name || 'Tanpa Nama')}</strong><br>
+               <small style="opacity: 0.7;">${email}</small>
+             </div>
           </td>
-          <td style="padding: 16px 12px;">${roleBadge}<br><div style="margin-top:4px;">${statusBadge}</div></td>
-          <td style="padding: 16px 12px; font-weight: 500;">${quota}x / Hari</td>
-          <td style="padding: 16px 12px; font-weight: bold; color: #10b981;">${token.toLocaleString('id-ID')}</td>
-          <td style="padding: 16px 12px; text-align: right;">
-            <div style="display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap;">
+          <td data-label="Status" style="padding: 16px 12px;">
+             <div style="display: flex; gap: 6px; align-items: center; justify-content: flex-end;">
+               ${roleBadge} ${statusBadge}
+             </div>
+          </td>
+          <td data-label="Batas Klik" style="padding: 16px 12px; font-weight: 500;">${quota}x / Hari</td>
+          <td data-label="Saldo AI" style="padding: 16px 12px; font-weight: bold; color: #10b981;">${token.toLocaleString('id-ID')}</td>
+          <td style="padding: 16px 12px;">
+            <div style="display: flex; gap: 6px; justify-content: center; flex-wrap: wrap;">
               ${button('Ubah', 'edit-user', `data-id="${email}"`, 'btn-small')}
               ${button('Hapus', 'delete-user', `data-id="${email}"`, 'btn-small btn-danger')}
-              <button type="button" onclick="editUserQuota('${email}', ${quota})" style="padding: 6px 12px; background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
-                Edit Kuota
-              </button>
-              <button type="button" onclick="topUpUserToken('${email}')" style="padding: 6px 12px; background: #ecfdf5; color: #10b981; border: 1px solid #10b981; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">
-                + Top-Up
-              </button>
+              <button type="button" onclick="editUserQuota('${email}', ${quota})" style="padding: 6px 12px; background: white; color: #374151; border: 1px solid #d1d5db; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">Edit Kuota</button>
+              <button type="button" onclick="topUpUserToken('${email}')" style="padding: 6px 12px; background: #ecfdf5; color: #10b981; border: 1px solid #10b981; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 600;">+ Top-Up</button>
             </div>
           </td>
         </tr>
@@ -1801,6 +1803,45 @@ async function renderUsers() {
     });
 
     $('#content').innerHTML = `
+      <style>
+        /* CSS Khusus agar Tabel Admin Rapi di HP (PWA) */
+        @media (max-width: 760px) {
+          .admin-table td {
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center;
+            padding: 12px 0 !important;
+            text-align: right;
+            border-bottom: 1px solid #f1f5f9;
+          }
+          .admin-table td::before {
+            content: attr(data-label);
+            font-weight: 650;
+            font-size: 12px;
+            color: #64748b;
+            text-align: left;
+            margin-right: 10px;
+          }
+          .admin-table td[data-label="Identitas"] div {
+            text-align: right;
+          }
+          /* Baris Tombol Aksi */
+          .admin-table td:last-child {
+            display: block !important;
+            border-bottom: none !important;
+            border-top: 1px dashed #cbd5e1 !important;
+            margin-top: 10px;
+            padding-top: 16px !important;
+          }
+          .admin-table td:last-child::before {
+            display: none;
+          }
+          .admin-table td:last-child > div {
+            justify-content: center !important;
+          }
+        }
+      </style>
+
       <div class="stack">
         ${pageHead('Manajemen pengguna', 'Kelola batas klik harian, saldo token AI, dan daftarkan pengguna baru.')}
         <div class="notice">Login tidak memverifikasi kepemilikan email. Orang yang mengetahui email admin dapat masuk sebagai admin. Gunakan hanya untuk lingkungan tepercaya.</div>
@@ -1840,15 +1881,15 @@ async function renderUsers() {
         </div>
 
         <div class="card table-wrap" style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+          <table class="admin-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
             <thead style="background: #f9fafb; border-bottom: 2px solid #e5e7eb; color: #374151;">
               <tr>
                 <th style="padding: 16px 12px;">No</th>
                 <th style="padding: 16px 12px;">Identitas Pengguna</th>
-                <th style="padding: 16px 12px;">Status</th>
+                <th style="padding: 16px 12px; text-align: right;">Status</th>
                 <th style="padding: 16px 12px;">Batas Klik</th>
                 <th style="padding: 16px 12px;">Saldo AI</th>
-                <th style="padding: 16px 12px; text-align: right;">Aksi</th>
+                <th style="padding: 16px 12px; text-align: center;">Aksi</th>
               </tr>
             </thead>
             <tbody>
