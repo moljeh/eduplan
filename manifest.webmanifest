@@ -1,23 +1,23 @@
 {
-  "id": "./",
+  "id": "/",
   "name": "EduPlan AI | Ruang Kerja Guru",
   "short_name": "EduPlan AI",
   "description": "Ruang kerja perangkat ajar guru. Lebih sedikit administrasi, lebih banyak inspirasi.",
   "lang": "id",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7fc",
   "theme_color": "#6254dc",
   "icons": [
     {
-      "src": "./asset/icon-192.png",
+      "src": "/asset/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./asset/icon-512.png",
+      "src": "/asset/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
