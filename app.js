@@ -610,96 +610,92 @@ Konteks/Referensi: ${params.reference || '-'}
 Instruksi Khusus: ${params.instructions || '-'}
 Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digunakan tanpa basa-basi atau kalimat pembuka/penutup.`;
 
-        let generatedText = "";
+        let fullText = "";
         const activeProvider = params.provider || 'gemini';
+        let response;
 
         if (activeProvider === 'gemini') {
-          const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelNameGen}:generateContent?key=${apiKeyGen}`;
-          const response = await fetch(endpoint, {
+          response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelNameGen}:streamGenerateContent?alt=sse&key=${apiKeyGen}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
           });
-          const data = await response.json();
-          if (!response.ok) throw new Error("Sistem gagal merespons. Silakan coba beberapa saat lagi.");
-          generatedText = data.candidates[0].content.parts[0].text;
         } 
-        
         else if (activeProvider === 'openai') {
-          const endpoint = 'https://api.openai.com/v1/chat/completions';
-          const response = await fetch(endpoint, {
+          response = await fetch('https://api.openai.com/v1/chat/completions', {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${apiKeyGen}`
-            },
-            body: JSON.stringify({
-              model: modelNameGen,
-              messages: [{ role: 'user', content: promptText }],
-              temperature: 0.7
-            })
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKeyGen}` },
+            body: JSON.stringify({ model: modelNameGen, messages: [{ role: 'user', content: promptText }], stream: true })
           });
-          const data = await response.json();
-          if (!response.ok) throw new Error("Sistem gagal merespons. Silakan coba beberapa saat lagi.");
-          generatedText = data.choices[0].message.content;
         } 
-        
         else if (activeProvider === 'claude') {
-          const endpoint = 'https://api.anthropic.com/v1/messages';
-          const response = await fetch(endpoint, {
+          response = await fetch('https://api.anthropic.com/v1/messages', {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'x-api-key': apiKeyGen,
-              'anthropic-version': '2023-06-01',
-              'anthropic-dangerous-direct-browser-access': 'true'
-            },
-            body: JSON.stringify({
-              model: modelNameGen,
-              max_tokens: 4000,
-              messages: [{ role: 'user', content: promptText }]
-            })
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKeyGen, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+            body: JSON.stringify({ model: modelNameGen, max_tokens: 4000, messages: [{ role: 'user', content: promptText }], stream: true })
           });
-          const data = await response.json();
-          if (!response.ok) throw new Error("Sistem gagal merespons. Silakan coba beberapa saat lagi.");
-          generatedText = data.content[0].text;
-        } 
-        
-        else {
+        } else {
           throw new Error(`Sistem pengolah ini tidak dikenali.`);
         }
 
-        const newDocRef = doc(collection(db, "Documents"));
-        const docData = {
-          id: newDocRef.id,
-          owner: state.user.email,
-          title: `Draf ${params.type.replace(/_/g, ' ')} - ${params.topic || 'Baru'}`,
-          type: params.type,
-          provider: activeProvider,
-          created: Date.now(),
-          updated: Date.now(),
-          revision: 1,
-          deleted: false,
-          favorite: false,
-          content: generatedText
-        };
-        await setDoc(newDocRef, docData);
+        if (!response.ok) throw new Error("Sistem gagal merespons. Silakan coba lagi.");
 
-        return {
-          doc: { id: docData.id, title: docData.title, type: docData.type, provider: docData.provider, owner: docData.owner, updated: docData.updated, revision: docData.revision, deleted: false, favorite: false },
-          text: generatedText,
-          usage: { used: state.usage.used + 1, limit: state.usage.limit }
-        };
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          buffer += decoder.decode(value, { stream: true });
+          let newlineIndex;
+          
+          while ((newlineIndex = buffer.indexOf('\n')) >= 0) {
+            let line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+            
+            if (line.startsWith('data:')) {
+              const dataStr = line.substring(5).trim();
+              if (dataStr === "[DONE]" || !dataStr) continue;
+              
+              try {
+                const data = JSON.parse(dataStr);
+                let textPiece = "";
+                
+                if (activeProvider === 'gemini' && data.candidates && data.candidates[0].content?.parts[0]?.text) {
+                  textPiece = data.candidates[0].content.parts[0].text;
+                } else if (activeProvider === 'openai' && data.choices && data.choices[0].delta?.content) {
+                  textPiece = data.choices[0].delta.content;
+                } else if (activeProvider === 'claude' && data.type === 'content_block_delta' && data.delta?.text) {
+                  textPiece = data.delta.text;
+                }
+                
+                if (textPiece) {
+                  fullText += textPiece;
+                  if (params.onUpdate) params.onUpdate(textPiece); 
+                }
+              } catch (e) {
+                 
+              }
+            }
+          }
+        }
+
+        const updateRef = doc(db, "Documents", params.docId);
+        await setDoc(updateRef, { content: fullText, updated: Date.now() }, { merge: true });
+
+        return { text: fullText };
 
       case 'saveDocument':
-        const updateRef = doc(db, "Documents", params.id);
-        await setDoc(updateRef, {
+        const saveDocRef = doc(db, "Documents", params.id);
+        await setDoc(saveDocRef, {
           title: params.title,
           content: params.text,
           updated: Date.now(),
           revision: params.revision + 1
         }, { merge: true });
-        const updatedSnap = await getDoc(updateRef);
+        const updatedSnap = await getDoc(saveDocRef);
         return updatedSnap.data();
 
        case 'listDocuments':
@@ -733,15 +729,14 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
         const favSnap = await getDoc(favRef);
         return favSnap.data();
 
-case 'updateProfile':
+      case 'updateProfile':
         await updateDoc(doc(db, "Users", params.email), {
           name: params.name,
           school: params.school,
-          region: params.region, // <--- Menyimpan wilayah/kabupaten mandiri
+          region: params.region,
           address: params.address,
           phone: params.phone
         });
-        
         if (params.newPassword && params.newPassword.trim() !== '') {
           await updatePassword(auth.currentUser, params.newPassword);
         }
@@ -1521,73 +1516,113 @@ async function generate(form) {
   delete params.level_select;
   delete params.level_custom;
 
-  await run(async () => {
-    // 1. TENTUKAN TARIF TOKEN BERDASARKAN JENIS DOKUMEN
-    let tokenCost = 500; 
-    const docType = state.generatorType;
+  let tokenCost = 500; 
+  const docType = state.generatorType;
+  if (['rpp', 'modul_ajar'].includes(docType)) tokenCost = 1500; 
+  else if (['prota', 'promes', 'atp', 'silabus'].includes(docType)) tokenCost = 1200;
+  else if (['bank_soal', 'kisi_kisi', 'asesmen_sumatif'].includes(docType)) tokenCost = 1000;
+  else if (['bahan_bacaan', 'slide_presentasi'].includes(docType)) tokenCost = 800;
 
-    if (docType === 'rpp' || docType === 'modul_ajar') {
-      tokenCost = 1500; 
-    } else if (docType === 'prota' || docType === 'promes' || docType === 'atp' || docType === 'silabus') {
-      tokenCost = 1200;
-    } else if (docType === 'bank_soal' || docType === 'kisi_kisi' || docType === 'asesmen_sumatif') {
-      tokenCost = 1000;
-    } else if (docType === 'bahan_bacaan' || docType === 'slide_presentasi') {
-      tokenCost = 800;
-    }
+  const userIdentifier = state.token || state.user?.email;
 
-    // 2. CEK KETERSEDIAAN API KEY ADMIN
-    const providerId = params.provider || 'gemini';
-    const provRef = doc(db, "Providers", providerId);
+  // 1. Cek Kesiapan (API Key, Saldo, Kuota) dengan Loading Spinner sesaat
+  const canProceed = await run(async () => {
+    const provRef = doc(db, "Providers", params.provider || 'gemini');
     const provSnap = await getDoc(provRef);
     if (!provSnap.exists() || !provSnap.data().key) {
-       await window.Swal.fire('Sistem AI Belum Siap', `API Key untuk provider ${providerId} belum dikonfigurasi. Hubungi Admin.`, 'error');
-       return;
+       await window.Swal.fire('Sistem AI Belum Siap', 'API Key belum dikonfigurasi. Hubungi Admin.', 'error');
+       return false;
     }
 
-    // 3. AMBIL DATA USER BERDASARKAN SESI TOKEN YANG AKTIF (Mencegah error akun tidak ditemukan)
-    const userIdentifier = state.token || state.user?.email;
     const userRef = doc(db, 'Users', userIdentifier);
     let userSnap = await getDoc(userRef);
-
-    // Cadangan: Jika tidak ketemu lewat token, cari berdasarkan email
-    if (!userSnap.exists() && state.user?.email) {
-       const altUserRef = doc(db, 'Users', state.user.email);
-       userSnap = await getDoc(altUserRef);
-    }
+    if (!userSnap.exists() && state.user?.email) userSnap = await getDoc(doc(db, 'Users', state.user.email));
 
     if (userSnap.exists()) {
       const data = userSnap.data();
-      const currentBalance = data.tokenBalance || 0;
-      
-      if (currentBalance < tokenCost) {
-        await window.Swal.fire('Saldo Tidak Mencukupi', `Pembuatan dokumen ini memerlukan ${tokenCost} token.\nSaldo Anda saat ini: ${currentBalance.toLocaleString('id-ID')}.\n\nSilakan klik tombol Beli / Top-Up di Dashboard.`, 'warning');
-        return; 
+      if ((data.tokenBalance || 0) < tokenCost) {
+        await window.Swal.fire('Saldo Tidak Mencukupi', `Pembuatan dokumen ini memerlukan ${tokenCost} token.\nSaldo Anda saat ini: ${(data.tokenBalance||0).toLocaleString('id-ID')}.\n\nSilakan klik tombol Beli / Top-Up di Dashboard.`, 'warning');
+        return false; 
       }
     } else {
-        await window.Swal.fire('Akses Ditolak', 'Akun tidak ditemukan di database. Silakan keluar (logout) lalu masuk kembali dengan email terdaftar.', 'error');
-        return;
+      await window.Swal.fire('Akses Ditolak', 'Akun tidak ditemukan. Silakan login ulang.', 'error');
+      return false;
     }
 
-    // 4. CEK KUOTA KLIK HARIAN
-    const canGenerate = await checkQuotaBeforeGenerate(userIdentifier);
-    if (!canGenerate) return;
+    const isQuotaOk = await checkQuotaBeforeGenerate(userIdentifier);
+    if (!isQuotaOk) return false;
 
-    // 5. MINTA AI MEMBUAT DOKUMEN
-    const result = await api('generate', params);
-    
-    // 6. POTONG SALDO TOKEN
+    return true;
+  }, 'Menghubungkan ke server AI...');
+
+  if (!canProceed) return;
+
+  // 2. Buat Draf Dokumen Kosong di Database terlebih dahulu
+  const newDocRef = doc(collection(db, "Documents"));
+  const newDocId = newDocRef.id;
+  const docData = {
+      id: newDocId,
+      owner: userIdentifier,
+      title: `Draf ${params.type.replace(/_/g, ' ')} - ${params.topic || 'Baru'}`,
+      type: params.type,
+      provider: params.provider || 'gemini',
+      created: Date.now(),
+      updated: Date.now(),
+      revision: 1,
+      deleted: false,
+      favorite: false,
+      content: ""
+  };
+  await setDoc(newDocRef, docData);
+
+  // 3. Pindah Langsung ke Layar Editor
+  state.editor = {doc: docData, text: ""};
+  state.documents.unshift(docData);
+  renderEditor();
+
+  const editorArea = document.getElementById('editor-text');
+  const statusLabel = document.getElementById('editor-status');
+  const saveBtn = document.querySelector('[data-form="save-document"] button[type="submit"]');
+  
+  editorArea.value = ""; 
+  editorArea.disabled = true; // Kunci teks agar guru tidak ikut mengetik saat AI bekerja
+  saveBtn.disabled = true;
+  if (statusLabel) statusLabel.innerHTML = `<span style="color:#10b981; font-weight:bold;">● AI sedang menyusun...</span>`;
+  
+  // Matikan tombol ekspor selama mengetik agar tidak error
+  document.querySelectorAll('[data-action="export"]').forEach(btn => btn.disabled = true);
+
+  // 4. Mulai Proses Streaming!
+  try {
+    const result = await api('generate', {
+        ...params,
+        docId: newDocId,
+        onUpdate: (chunk) => {
+           // Tempel potongan teks secara langsung (*live*)
+           editorArea.value += chunk;
+           editorArea.scrollTop = editorArea.scrollHeight; // Auto scroll ke bawah
+        }
+    });
+
+    // 5. Potong Saldo & Buka Kunci Editor setelah selesai
     await deductTokenAfterGenerate(userIdentifier, tokenCost);
-
-    // 7. TAMPILKAN HASIL
-    state.editor = {doc: result.doc, text: result.text};
-    state.usage = result.usage;
-    state.documents.unshift(result.doc);
-    state.dirty = false;
-    renderEditor();
+    state.usage.used += 1;
+    state.editor.text = result.text;
     
-    window.Swal.fire('Berhasil', `Draf sukses dibuat! Saldo dipotong ${tokenCost} token.`, 'success');
-  }, 'Memeriksa kuota & menyusun dokumen...');
+    editorArea.disabled = false;
+    saveBtn.disabled = false;
+    document.querySelectorAll('[data-action="export"]').forEach(btn => btn.disabled = false);
+    if (statusLabel) statusLabel.textContent = `Tersimpan otomatis · revisi 1`;
+    
+    EduNotify.toast(`Selesai! Saldo dipotong ${tokenCost} token.`);
+
+  } catch (error) {
+    editorArea.disabled = false;
+    saveBtn.disabled = false;
+    document.querySelectorAll('[data-action="export"]').forEach(btn => btn.disabled = false);
+    if (statusLabel) statusLabel.textContent = `Terjadi kesalahan.`;
+    window.Swal.fire('Koneksi Terputus', error.message, 'error');
+  }
 }
 
 
@@ -1733,7 +1768,8 @@ async function exportDocument(format) {
     let htmlRows = [];
     let inTable = false;
     let isHeaderRow = true;
-    let skipSignatureLines = false; 
+    let expectedCols = 0; 
+    let skipSignatureLines = false;
     let inKvTable = false; 
     let forcePageBreak = false; 
 
@@ -1742,33 +1778,61 @@ async function exportDocument(format) {
       
       if (tRow === '---' || tRow === '***' || tRow === '___' || tRow.startsWith('$')) continue;
 
+      let cleanTextForMatch = tRow.replace(/[\*\_]/g, '').trim();
+
       if (skipSignatureLines) {
-        if (tRow.match(/Kepala|NIP|Guru|Pelajaran|____|\.\.\.\.|\[Nama/i) || tRow.match(/^[\W_]+$/) || tRow === '') {
+        if (cleanTextForMatch.match(/Kepala|NIP|Guru|Pelajaran|____|\.\.\.\.|\[Nama|\(|wali\s+kelas/i) || cleanTextForMatch.match(/^[\W_]+$/) || cleanTextForMatch === '') {
           continue; 
         } else {
           skipSignatureLines = false; 
         }
       }
 
-      if (tRow.match(/^Mengetahui,?/i)) {
+   if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
         skipSignatureLines = true;
         forcePageBreak = true; 
+        const namaGuru = escapeHTML(state.user.name || '..................................................');
+        
         htmlRows.push(`
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border: none; margin-top: 30px; margin-bottom: 20px; border-collapse: collapse; page-break-inside: avoid;">
             <tr>
-              <td width="50%" style="width: 50%; text-align: center; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; line-height: 1.5;">
+              <td width="50%" style="width: 50%; text-align: center; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: bottom; line-height: 1.15; padding-right: 20px;">
                 Mengetahui,<br>
-                Kepala Sekolah<br>
-                <br><br><br><br>
-                <b><u>..................................................</u></b><br>
-                NIP. ..............................................
+                Kepala Sekolah
+                <div style="height: 70px;"></div>
+                <!-- Tabel kecil untuk mengunci lebar garis dan NIP (Kepala Sekolah) -->
+                <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 0 auto;">
+                  <tr>
+                    <td style="border-bottom: 1pt solid black; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px;">
+                      &nbsp;
+                    </td>
+                  </tr>
+                  <tr>
+                    <!-- Penyesuaian: padding-top ditambah menjadi 8px, titik-titik disesuaikan lebarnya -->
+                    <td style="text-align: left; padding-top: 8px; font-size: 12pt; font-family: 'Times New Roman', Times, serif;">
+                      NIP. ..............................................................
+                    </td>
+                  </tr>
+                </table>
               </td>
-              <td width="50%" style="width: 50%; text-align: center; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; line-height: 1.5;">
+              <td width="50%" style="width: 50%; text-align: center; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: bottom; line-height: 1.15; padding-left: 20px;">
                 Bangkalan, ..............................<br>
-                Guru Mata Pelajaran<br>
-                <br><br><br><br>
-                <b><u>..................................................</u></b><br>
-                NIP. ..............................................
+                Guru Mata Pelajaran
+                <div style="height: 70px;"></div>
+                <!-- Tabel kecil untuk mengunci lebar garis dan NIP (Guru) -->
+                <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 0 auto;">
+                  <tr>
+                    <td style="border-bottom: 1pt solid black; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px;">
+                      ${namaGuru}
+                    </td>
+                  </tr>
+                  <tr>
+                    <!-- Penyesuaian: padding-top ditambah menjadi 8px, titik-titik disesuaikan lebarnya -->
+                    <td style="text-align: left; padding-top: 8px; font-size: 12pt; font-family: 'Times New Roman', Times, serif;">
+                      NIP. ..............................................................
+                    </td>
+                  </tr>
+                </table>
               </td>
             </tr>
           </table>
@@ -1782,9 +1846,25 @@ async function exportDocument(format) {
           htmlRows.push('<table width="100%" border="1" cellspacing="0" cellpadding="4" style="width: 100%; border-collapse: collapse; border: 1pt solid black; margin-top: 10px; margin-bottom: 15px;">');
           inTable = true;
           isHeaderRow = true;
+          expectedCols = 0;
         }
         
-        let cells = tRow.split('|').slice(1, -1);
+        let cells = tRow.split('|');
+        if (cells.length > 0 && cells[0].trim() === '') cells.shift();
+        if (cells.length > 0 && cells[cells.length - 1].trim() === '') cells.pop();
+        
+        if (isHeaderRow) {
+          if (cells.length > 0 && cells[cells.length - 1].trim() === '') cells.pop();
+          expectedCols = cells.length; 
+        } else {
+          while (cells.length < expectedCols) {
+            cells.push(' '); 
+          }
+          if (cells.length > expectedCols) {
+            cells = cells.slice(0, expectedCols); 
+          }
+        }
+
         let rowHtml = '<tr>' + cells.map((c) => {
           let cellContent = escapeHTML(c.trim())
             .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
@@ -1810,6 +1890,7 @@ async function exportDocument(format) {
           inTable = false;
           isHeaderRow = true;
         }
+        
         let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
         
         cleanRow = cleanRow.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
@@ -1890,7 +1971,8 @@ async function exportDocument(format) {
         }
       }
     }
-    if (inTable) htmlRows.push('</table>');
+    
+    if (inTable) htmlRows.push('</tbody></table>');
     if (inKvTable) htmlRows.push('</table></div>'); 
 
     const processedHTML = htmlRows.join('\n');
