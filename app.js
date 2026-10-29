@@ -593,6 +593,49 @@ async function api(action, params = {}) {
           throw new Error(`Pengujian layanan ini belum tersedia di sistem.`);
         }
 		
+		
+		case 'refineText':
+        const refProvRef = doc(db, "Providers", params.provider || 'gemini');
+        const refProvSnap = await getDoc(refProvRef);
+        if (!refProvSnap.exists() || !refProvSnap.data().key) throw new Error("Sistem AI belum siap digunakan.");
+        
+        const rApiKey = refProvSnap.data().key;
+        const rModel = refProvSnap.data().model || (params.provider === 'openai' ? 'gpt-4o' : params.provider === 'claude' ? 'claude-3-5-sonnet-20241022' : 'gemini-3.8-flash');
+        
+        const rPrompt = `Sebagai asisten pendidikan profesional, perbaiki dan rapikan teks berikut agar tata bahasa dan strukturnya lebih baik. Hanya berikan hasil perbaikannya saja tanpa menambahkan kalimat pembuka atau penutup:\n\n${params.text}`;
+        
+        let rFullText = "";
+        
+        if (params.provider === 'gemini' || !params.provider) {
+          const rResp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${rModel}:generateContent?key=${rApiKey}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: [{ parts: [{ text: rPrompt }] }] })
+          });
+          const rData = await rResp.json();
+          if (!rResp.ok) throw new Error(rData.error?.message || "Gagal memperbaiki teks dari Gemini.");
+          rFullText = rData.candidates[0].content.parts[0].text;
+        } 
+        else if (params.provider === 'openai') {
+          const rResp = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${rApiKey}` },
+            body: JSON.stringify({ model: rModel, messages: [{ role: 'user', content: rPrompt }] })
+          });
+          const rData = await rResp.json();
+          if (!rResp.ok) throw new Error("Gagal memperbaiki teks dari OpenAI.");
+          rFullText = rData.choices[0].message.content;
+        } 
+        else if (params.provider === 'claude') {
+          const rResp = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': rApiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+            body: JSON.stringify({ model: rModel, max_tokens: 1500, messages: [{ role: 'user', content: rPrompt }] })
+          });
+          const rData = await rResp.json();
+          if (!rResp.ok) throw new Error("Gagal memperbaiki teks dari Claude.");
+          rFullText = rData.content[0].text;
+        }
+        
+        return { text: rFullText };
+		
       case 'generate':
         const genProvRef = doc(db, "Providers", params.provider || 'gemini');
         const genProvSnap = await getDoc(genProvRef);
@@ -1653,6 +1696,68 @@ async function generate(form) {
   }
 }
 
+async function refineSelectedText() {
+  const editorArea = document.getElementById('editor-text');
+  if (!editorArea) return;
+  
+  const start = editorArea.selectionStart;
+  const end = editorArea.selectionEnd;
+  if (start === end) return;
+  
+  const selectedText = editorArea.value.substring(start, end);
+  if (selectedText.trim().length < 10) {
+     EduNotify.toast('Teks terlalu pendek untuk diperbaiki AI.', {type: 'warning'});
+     return;
+  }
+
+  const tokenCost = 150; // Harga khusus perbaikan teks (lebih hemat)
+  const userIdentifier = state.token || state.user?.email;
+  
+  const canProceed = await run(async () => {
+    const userRef = doc(db, 'Users', userIdentifier);
+    let userSnap = await getDoc(userRef);
+    if (!userSnap.exists() && state.user?.email) userSnap = await getDoc(doc(db, 'Users', state.user.email));
+
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      if ((data.tokenBalance || 0) < tokenCost) {
+        await window.Swal.fire('Saldo Tidak Mencukupi', `Fitur perbaikan ini memerlukan ${tokenCost} token.\nSaldo Anda saat ini: ${(data.tokenBalance||0).toLocaleString('id-ID')}.`, 'warning');
+        return false; 
+      }
+    }
+    return true;
+  }, 'Menganalisis teks...');
+
+  if (!canProceed) return;
+  
+  await run(async () => {
+     const result = await api('refineText', { 
+        text: selectedText, 
+        provider: state.editor.doc.provider 
+     });
+     
+     await deductTokenAfterGenerate(userIdentifier, tokenCost);
+     
+     // 1. Ekstrak bagian yang tidak diseleksi
+     const before = editorArea.value.substring(0, start);
+     const after = editorArea.value.substring(end);
+     const newText = result.text.trim();
+     
+     // 2. Jahit kembali teks baru di tengah-tengahnya
+     editorArea.value = before + newText + after;
+     
+     // 3. Update status editor
+     state.editor.text = editorArea.value;
+     state.dirty = true;
+     document.getElementById('editor-status').textContent = 'Perubahan belum disimpan';
+     
+     // 4. Sembunyikan tombol setelah selesai
+     document.getElementById('btn-refine-ai').style.display = 'none';
+     
+     EduNotify.toast(`Teks berhasil dirapikan! Saldo dipotong ${tokenCost} token.`);
+  }, 'AI sedang memperbaiki kalimat...');
+}
+
 
 /* ==========================================================================
  * KELOMPOK EDITOR DOKUMEN & EKSPOR (F34 - F42)
@@ -1682,12 +1787,19 @@ function renderEditor() {
     <div class="notice">Ekspor menggunakan teks sederhana. Tabel kompleks, kop surat, dan slide tidak diformat otomatis. Simpan perubahan sebelum menutup halaman.</div>
     <form class="card" data-form="save-document">
       ${field('title', 'Judul dokumen', doc.title, {required: true, max: 180})}
-      <div class="row mb-20">
+     <div class="row mb-20">
         <button class="btn btn-primary" type="submit">Simpan perubahan</button>
         ${button('Unduh PDF', 'export', 'data-format="pdf"')}
         ${button('Unduh Word', 'export', 'data-format="docx"')}
         ${button('Salin teks', 'copy', '', 'btn-outline')}
-        ${button('✦ Jadikan Rujukan AI', 'use-as-reference', 'title="Buat dokumen lanjutan (misal: soal) dari isi ini"', 'btn-outline')}
+        
+       <!-- TOMBOL AI REFINE MELAYANG (FLOATING) -->
+        <button type="button" data-action="refine-selected" id="btn-refine-ai" style="display: none; position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 9999; background: linear-gradient(135deg, #a855f7, #6366f1); color: white; border: none; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.5); padding: 12px 24px; border-radius: 50px; font-size: 14px; font-weight: bold; align-items: center; gap: 8px; cursor: pointer; transition: transform 0.2s;">
+           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path></svg>
+           Perbaiki Teks AI
+        </button>
+
+        ${button('✦ Jadikan Rujukan AI', 'use-as-reference', 'title="Buat dokumen lanjutan dari isi ini"', 'btn-outline')}
       </div>
       <label class="field"><span>Isi dokumen</span><textarea class="editor" name="text" id="editor-text" maxlength="150000"></textarea></label>
       <div class="row between"><small id="editor-status" class="muted">Tersimpan · revisi ${doc.revision}</small><small class="muted">Maksimum 150.000 karakter</small></div>
@@ -2795,6 +2907,7 @@ async function onClick(event) {
     case 'open-document': return openDocument(data.id);
     case 'export': return exportDocument(data.format);
     case 'copy': return copyDocument();
+    case 'refine-selected': return refineSelectedText(); // <-- TAMBAHKAN INI
     case 'favorite-document': return mutateDocument('favoriteDocument', data.id, data.value === 'true');
     case 'trash-document': return mutateDocument('trashDocument', data.id, data.value === 'true');
     case 'refresh-documents': return navigate(state.route);
@@ -2895,6 +3008,20 @@ function toggleTheme() {
 async function init() {
   document.documentElement.dataset.theme = localStorage.getItem(CONFIG.THEME_KEY) || 'light';
   
+  // DETEKSI SOROTAN TEKS UNTUK TOMBOL REFINE (DIPERBARUI) diletakkan di sini!
+  document.addEventListener('selectionchange', () => {
+    const editorArea = document.getElementById('editor-text');
+    const refineBtn = document.getElementById('btn-refine-ai');
+    
+    if (editorArea && refineBtn) {
+      if (editorArea.selectionStart !== editorArea.selectionEnd) {
+        refineBtn.style.display = 'flex';
+      } else {
+        refineBtn.style.display = 'none';
+      }
+    }
+  });
+
   window.addEventListener('popstate', (event) => {
     if (document.body.classList.contains('menu-open')) {
       document.body.classList.remove('menu-open');
