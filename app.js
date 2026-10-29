@@ -25,7 +25,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
+
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyBAOx9xheoXL_pzhpmQvGS5ZGwE3VSc0W8",
@@ -808,9 +811,6 @@ function clearSession() {
 
 
 
-
-
-
 function renderLogin() {
   $('#app').innerHTML = `
     <main class="login" id="content">
@@ -826,27 +826,24 @@ function renderLogin() {
         <p>Susun perangkat ajar, rencanakan pembelajaran, dan kelola dokumen dalam satu ruang kerja.</p>
         <div class="login-points"><span>Keamanan Standar Industri</span><span>Sistem Multi-AI</span><span>Cloud Terenkripsi</span></div>
       </section>
-      
-     </section>
 
       <section class="login-panel" style="flex-direction: column;">
         <div class="login-box" id="login-form-container">
           <h1>Selamat datang 👋</h1>
           <p class="muted">Masuk ke ruang kerja dengan email dan sandi Anda.</p>
-         <form data-form="login">
+          <form data-form="login">
             ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, autocomplete: 'email', placeholder: 'Masukkan email'})}
-<label class="field" style="position: relative;">
-  <span>Kata sandi</span>
-  <input name="password" type="password" required maxlength="100" placeholder="Masukkan password" style="padding-right: 40px;">
-  <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </button>
-</label>
+            <label class="field" style="position: relative;">
+              <span>Kata sandi</span>
+              <input name="password" type="password" required maxlength="100" placeholder="Masukkan password" style="padding-right: 40px;">
+              <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              </button>
+            </label>
 
-<div style="text-align: right; margin-top: -8px; margin-bottom: 16px;">
-  <button type="button" data-action="forgot-password" style="background: transparent; border: none; color: #4f46e5; font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Lupa kata sandi?</button>
-</div>
-
+            <div style="text-align: right; margin-top: -8px; margin-bottom: 16px;">
+              <button type="button" data-action="forgot-password" style="background: transparent; border: none; color: #4f46e5; font-size: 0.85rem; font-weight: 600; cursor: pointer; padding: 0; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Lupa kata sandi?</button>
+            </div>
 
             <button type="submit" class="btn btn-primary full">Masuk ke ruang kerja →</button>
           </form>
@@ -860,31 +857,25 @@ function renderLogin() {
           <h1>Buat Akun Baru 🚀</h1>
           <p class="muted">Lengkapi data diri Anda untuk membuat ruang kerja.</p>
           <form data-form="register">
-           
-		   
-		   
-		   <div class="form-grid">
+            <div class="form-grid">
               ${field('name', 'Nama lengkap', '', {required: true, max: 100, full: true, placeholder: 'Masukkan nama lengkap'})}
               ${field('school', 'Nama instansi/sekolah', '', {required: true, max: 150, placeholder: 'Masukkan nama sekolah'})}
               ${field('whatsapp', 'No. WhatsApp', '', {type: 'tel', required: true, max: 20, placeholder: 'Contoh: 08123456789'})}
               ${field('email', 'Alamat email', '', {type: 'email', required: true, max: 254, full: true, placeholder: 'Masukkan email'})}
-<label class="field span-2" style="position: relative;">
-  <span>Buat kata sandi</span>
-  <input name="password" type="password" required maxlength="100" placeholder="Masukkan password (minimal 6 karakter)" style="padding-right: 40px;">
-		   
-		   
-		   
-  <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-  </button>
-</label>
+              <label class="field span-2" style="position: relative;">
+                <span>Buat kata sandi</span>
+                <input name="password" type="password" required maxlength="100" placeholder="Masukkan password (minimal 6 karakter)" style="padding-right: 40px;">
+                <button type="button" data-action="toggle-password" style="position: absolute; right: 10px; bottom: 8px; background: transparent; border: none; cursor: pointer; padding: 4px; color: #64748b; display: flex; align-items: center;" title="Lihat/Sembunyikan">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </label>
             </div>
             <button type="submit" class="btn btn-primary full mt-20">Daftar Sekarang →</button>
           </form>
-         <div style="margin-top: 24px; text-align: center; border-top: 1px solid rgba(128,128,128,0.2); padding-top: 20px;">
-  <span style="font-size: 0.9rem; color: #64748b;">Sudah memiliki akun?</span>
-  <button type="button" style="background: transparent; border: none; color: #4f46e5; font-weight: 600; font-size: 0.9rem; cursor: pointer; padding: 0 0 0 4px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" onclick="document.getElementById('register-form-container').style.display='none'; document.getElementById('login-form-container').style.display='block';">Masuk di sini</button>
-</div>
+          <div style="margin-top: 24px; text-align: center; border-top: 1px solid rgba(128,128,128,0.2); padding-top: 20px;">
+            <span style="font-size: 0.9rem; color: #64748b;">Sudah memiliki akun?</span>
+            <button type="button" style="background: transparent; border: none; color: #4f46e5; font-weight: 600; font-size: 0.9rem; cursor: pointer; padding: 0 0 0 4px; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'" onclick="document.getElementById('register-form-container').style.display='none'; document.getElementById('login-form-container').style.display='block';">Masuk di sini</button>
+          </div>
         </div>
         
         <!-- TAMBAHAN FOOTER LOGIN -->
@@ -892,10 +883,12 @@ function renderLogin() {
           EduPlan AI &copy; ${new Date().getFullYear()}<br>
           Dikembangkan oleh <a href="https://www.tiktok.com/@putramadasa" target="_blank" rel="noopener noreferrer" style="color: var(--primary); text-decoration: none; font-weight: 600; transition: opacity 0.2s;" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">Tim EduPlan AI</a>
         </div>
-
       </section>
     </main>`;
 }
+
+
+
 
 
 async function register(form) {
@@ -1919,27 +1912,89 @@ async function mutateDocument(action, id, value) {
  * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
  * Deskripsi: Halaman untuk guru mengubah data pribadi (Nama, Sekolah).
  * ========================================================================== */
+/* ==========================================================================
+ * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
+ * ========================================================================== */
+/* ==========================================================================
+ * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
+ * ========================================================================== */
 function renderProfile() {
   setRoute('profile', 'Profil guru & sekolah');
+  
   $('#content').innerHTML = `<div class="stack">
-    ${pageHead('Profil guru & sekolah', 'Identitas ini digunakan sebagai konteks saat membuat dokumen.')}
+    ${pageHead('Profil Anda', 'Perbarui informasi pribadi dan instansi tempat Anda mengajar.')}
+    
     <form class="card" data-form="profile">
+      <h2>Data Diri & Sekolah</h2>
       <div class="form-grid">
-        ${field('name', 'Nama guru', state.user.name, {required: true, max: 100})}
-        ${field('school', 'Nama sekolah', state.user.school, {max: 200})}
-        ${field('email', 'Email akun', state.user.email, {disabled: true})}
-        ${field('role', 'Peran', state.user.role, {disabled: true})}
+        ${field('name', 'Nama lengkap', state.user.name, {required: true, max: 100})}
+        ${field('school', 'Nama instansi/sekolah', state.user.school, {required: true, max: 150})}
       </div>
-      <p class="muted">Email akun tidak dapat diganti. Peran dan status akun dikelola admin.</p>
-      <button class="btn btn-primary" type="submit">Simpan profil</button>
+      
+      <h2 style="margin-top: 32px;">Keamanan Akun</h2>
+      <div class="notice">Kosongkan kolom sandi jika tidak ingin menggantinya. Email tidak dapat diubah.</div>
+      
+      <!-- GRID BARU: Sandi dan Email sejajar -->
+      <div class="form-grid">
+        <label class="field">
+          <span>Kata sandi baru</span>
+          <div style="position: relative; display: flex; align-items: center;">
+            <input id="profile-password" name="newPassword" type="password" minlength="6" placeholder="Minimal 6 karakter" style="width: 100%; padding-right: 40px; box-sizing: border-box;">
+            <button type="button" tabindex="-1" onclick="
+              const pwd = document.getElementById('profile-password');
+              if (pwd.type === 'password') { 
+                pwd.type = 'text'; 
+                this.innerHTML = '<svg width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22\\'></path></svg>';
+              } else { 
+                pwd.type = 'password'; 
+                this.innerHTML = '<svg width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>';
+              }
+            " style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #666; padding: 0; display: flex; align-items: center; justify-content: center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+          </div>
+        </label>
+        
+        <!-- KOLOM EMAIL DITAMBAHKAN KEMBALI DI SINI -->
+        ${field('email', 'Email akun', state.user.email, {disabled: true})}
+      </div>
+      
+      <button class="btn btn-primary mt-20" type="submit">Simpan Perubahan</button>
     </form>
   </div>`;
 }
 
+
 async function saveProfile(form) {
+  const values = formValues(form);
+  
+  if (values.newPassword && values.newPassword.length < 6) {
+    Swal.fire('Gagal', 'Kata sandi baru minimal harus 6 karakter.', 'warning');
+    return;
+  }
+
   await run(async () => {
-    state.user = await api('saveProfile', formValues(form));
-    renderShell(); renderProfile(); showToast('Profil disimpan.');
+    // Kirim data ke backend
+    await api('updateProfile', { 
+      email: state.user.email, 
+      name: values.name, 
+      school: values.school, 
+      newPassword: values.newPassword 
+    });
+    
+    // Perbarui state di aplikasi agar langsung berubah tanpa refresh
+    state.user.name = values.name;
+    state.user.school = values.school;
+    
+    // Ubah nama di Topbar pojok kanan atas
+    const userLabelSpan = document.querySelector('.user-label span');
+    if (userLabelSpan) userLabelSpan.textContent = values.name;
+
+    showToast('Profil berhasil diperbarui!');
+    
+    // Kosongkan input password setelah berhasil disimpan
+    form.elements.newPassword.value = '';
+    
   }, 'Menyimpan profil...');
 }
 
