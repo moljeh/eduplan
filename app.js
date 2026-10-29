@@ -2851,28 +2851,412 @@ function renderLogs() {
 
 
 /* ==========================================================================
- * F56 | HALAMAN BANTUAN
- * Deskripsi: Halaman informasi panduan alur penggunaan aplikasi EduPlan AI.
+ * F56 | HALAMAN BANTUAN & GLOSARIUM MENU LENGKAP
+ * Deskripsi: Panduan operasional dan penjelasan 44 jenis dokumen secara detail.
  * ========================================================================== */
 function renderHelp() {
   setRoute('help', 'Panduan penggunaan');
   $('#content').innerHTML = `<div class="stack">
-    ${pageHead('Panduan penggunaan', 'Alur singkat untuk menyusun perangkat ajar dengan EduPlan AI.')}
-    <section class="card"><h2>Mulai membuat dokumen</h2><ol class="help-list">
-      <li>Isi nama dan sekolah di menu Profil.</li><li>Pilih kategori dan jenis generator.</li>
-      <li>Isi materi, kelas/fase, waktu, serta rujukan terverifikasi.</li><li>Pilih provider AI yang telah diaktifkan admin.</li>
-      <li>Generate, tinjau, dan perbaiki draf pada editor.</li><li>Simpan, lalu unduh PDF, Word, atau TXT.</li>
-    </ol></section>
-    <section class="card"><h2>Batasan hasil</h2><ul class="help-list">
-      <li>CP resmi dan kalender daerah tidak diambil otomatis.</li><li>Daftar hadir/nilai tanpa data menghasilkan template, bukan data nyata.</li>
-      <li>Analisis hasil perlu data anonim; verifikasi semua hitungan secara terpisah.</li>
-      <li>Presentasi berupa outline slide, bukan PPTX. Media berupa naskah/rancangan, bukan gambar/video.</li>
-      <li>PDF/Word berbasis teks sederhana; belum pemformatan tabel kompleks atau kop surat.</li>
-      <li>Riwayat mendukung favorit dan sampah yang dapat dipulihkan. Belum tersedia hapus permanen atau versi historis dokumen.</li>
-    </ul></section>
-    <div class="notice">Tanpa verifikasi login, alamat email bukan bukti identitas. Jangan gunakan aplikasi ini untuk data rahasia atau data pribadi siswa. Segera hubungi pemilik aplikasi jika ada aktivitas tidak wajar.</div>
+    ${pageHead('Buku Pintar EduPlan AI', 'Glosarium lengkap mencakup fungsi, komponen, dan tips instruksi (prompt) untuk 44 jenis dokumen.')}
+    
+    <div class="notice mb-20">
+      <strong>💡 TIPS PRO:</strong> Gunakan panduan <strong>"Tips Prompt AI"</strong> pada masing-masing menu di bawah ini dengan menuliskannya ke dalam kolom <strong>Instruksi Khusus</strong> saat Anda men-generate dokumen untuk hasil yang sangat akurat.
+    </div>
+
+    <!-- 1. KATEGORI PERENCANAAN -->
+    <section class="card">
+      <h2>1. Kategori: PERENCANAAN (Manajemen Kelas & Strategi Mengajar)</h2>
+      <p class="muted" style="margin-bottom: 16px; font-size: 13px;">Kategori ini adalah pusat kendali persiapan akademis. Penyusunan yang tepat di sini menentukan arah keberhasilan di dalam kelas.</p>
+      
+      <ul class="help-list" style="margin-bottom: 0;">
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">RPP (Rencana Pelaksanaan Pembelajaran)</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Panduan operasional langkah demi langkah untuk satu hingga tiga kali tatap muka.<br>
+            <strong>Komponen Utama:</strong> Identitas mata pelajaran, Tujuan Pembelajaran (TP), Langkah Pembelajaran (Pendahuluan, Inti, Penutup), dan Asesmen ringkas.<br>
+            <strong>Tips Prompt AI:</strong> Sebutkan metode/model spesifik (misal: <em>Problem Based Learning</em>) dan alokasi waktu per sintaks (misal: Pendahuluan 15 menit, Inti 60 menit).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Modul Ajar</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Versi komprehensif dari RPP khas Kurikulum Merdeka yang dirancang untuk satu bab atau satu topik utuh.<br>
+            <strong>Komponen Utama:</strong> Informasi Umum, Profil Pelajar Pancasila, Pemahaman Bermakna, Pertanyaan Pemantik, Langkah Detail, LKPD, Rubrik, dan Glosarium.<br>
+            <strong>Tips Prompt AI:</strong> Masukkan konteks lokal atau karakteristik siswa agar bagian "Pemahaman Bermakna" lebih relevan dengan kehidupan sehari-hari anak.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">ATP (Alur Tujuan Pembelajaran)</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Peta jalan (roadmap) yang menyusun Tujuan Pembelajaran secara kronologis dan logis dalam satu Fase.<br>
+            <strong>Komponen Utama:</strong> Elemen mata pelajaran, Capaian Pembelajaran (CP), urutan TP dari yang konkret ke abstrak, dan perkiraan Jam Pelajaran (JP).<br>
+            <strong>Tips Prompt AI:</strong> Tempelkan teks CP resmi dari kementerian, lalu perintahkan AI untuk memecahnya menjadi urutan yang sistematis.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">TP (Tujuan Pembelajaran)</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Target kompetensi spesifik turunan dari Capaian Pembelajaran.<br>
+            <strong>Komponen Utama:</strong> Kata Kerja Operasional (KKO) yang terukur dan Lingkup Materi inti.<br>
+            <strong>Tips Prompt AI:</strong> Instruksikan penggunaan Taksonomi Bloom (misal: C4 Menganalisis) agar target pembelajaran lebih terukur.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">KKTP (Kriteria Ketercapaian Tujuan Pembelajaran)</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Standar evaluasi pengganti KKM untuk menentukan apakah siswa sudah tuntas atau perlu intervensi.<br>
+            <strong>Komponen Utama:</strong> Interval nilai (skala 0-100), deskripsi ketuntasan (Mulai Berkembang hingga Sangat Mahir), dan tindak lanjut.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI menyajikannya dalam format rubrik deskriptif atau persentase interval agar mudah dipindahkan ke buku nilai.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">LKPD (Lembar Kerja Peserta Didik)</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Instrumen praktik, panduan eksperimen, atau lembar diskusi pemecahan masalah untuk siswa.<br>
+            <strong>Komponen Utama:</strong> Tujuan tugas, petunjuk pengerjaan, langkah kerja/soal, dan ruang jawaban atau tabel pengamatan.<br>
+            <strong>Tips Prompt AI:</strong> Tentukan gaya bahasa (misal: bahasa santai untuk SD, analitis untuk SMA) dan jenis aktivitas (individu/kelompok).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Distribusi TP</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Papan strategi untuk membagi habis semua TP ke dalam kalender akademik yang tersedia.<br>
+            <strong>Komponen Utama:</strong> Daftar urutan TP, alokasi JP per TP, dan plot minggu/bulan eksekusi.<br>
+            <strong>Tips Prompt AI:</strong> Cantumkan total minggu efektif di kolom rujukan agar pembagian JP presisi dan tidak kekurangan waktu.
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 2. KATEGORI PROGRAM -->
+    <section class="card">
+      <h2>2. Kategori: PROGRAM (Pemetaan Jangka Panjang & Menengah)</h2>
+      <p class="muted" style="margin-bottom: 16px; font-size: 13px;">Kategori ini mengatur ritme kerja guru selama satu tahun ajaran penuh dan memastikan tidak ada target kurikulum yang terlewat.</p>
+      
+      <ul class="help-list" style="margin-bottom: 0;">
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Prota (Program Tahunan)</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Rencana induk distribusi alokasi waktu untuk seluruh elemen materi selama setahun.<br>
+            <strong>Komponen Utama:</strong> Semester, Elemen/Bab, Tujuan Pembelajaran, dan Alokasi Waktu Total.<br>
+            <strong>Tips Prompt AI:</strong> Masukkan total minggu efektif setahun dan daftar bab agar AI bisa menghitung persentase JP secara logis.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Promes (Program Semester)</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Pecahan detail dari Prota untuk dieksekusi per pekan dalam satu semester.<br>
+            <strong>Komponen Utama:</strong> Pemetaan materi per bulan, per minggu (Minggu 1, 2, 3, dst.), dan tanda hari libur/ujian.<br>
+            <strong>Tips Prompt AI:</strong> Instruksikan AI untuk menandai minggu-minggu tertentu sebagai jeda PTS/SAS atau libur nasional berdasarkan kalender daerah Anda.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Program Literasi</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Desain aktivitas untuk meningkatkan minat baca dan daya kritis siswa di luar jam pelajaran inti.<br>
+            <strong>Komponen Utama:</strong> Latar belakang, tujuan, bentuk kegiatan (misal: baca 15 menit, bedah buku), jadwal, dan instrumen evaluasi.<br>
+            <strong>Tips Prompt AI:</strong> Sebutkan target (misal: kemampuan membaca pemahaman) agar AI merancang kegiatan yang fokus pada output karya (resume/infografis).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Program Ekstrakurikuler</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Dokumen legalitas dan silabus pembinaan kegiatan bakat minat siswa.<br>
+            <strong>Komponen Utama:</strong> Visi misi ekskul, struktur kepengurusan, silabus latihan per pertemuan, dan target lomba/prestasi.<br>
+            <strong>Tips Prompt AI:</strong> Sebutkan jenis ekskul secara spesifik (PMR, Basket, Jurnalistik) agar silabus latihannya relevan.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Program Remedial</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Skenario intervensi medis akademis bagi siswa yang tertinggal.<br>
+            <strong>Komponen Utama:</strong> Daftar kompetensi yang belum tuntas, bentuk perlakuan (tutor sebaya, bimbingan khusus), dan soal evaluasi ulang.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI merancang soal remedial yang tingkat kesulitannya diturunkan satu level dari soal aslinya.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Program Pengayaan</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Modul tantangan ekstra agar siswa fast-learner tidak bosan menunggu temannya.<br>
+            <strong>Komponen Utama:</strong> Materi eksplorasi lanjutan, proyek mandiri, atau penugasan literasi tingkat tinggi.<br>
+            <strong>Tips Prompt AI:</strong> Instruksikan pembuatan proyek berbasis studi kasus (Case Study) agar siswa menganalisis, bukan sekadar menghafal ulang.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Kalender Pendidikan</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Instrumen dasar perhitungan waktu kerja riil guru di kelas.<br>
+            <strong>Komponen Utama:</strong> Rincian minggu efektif, minggu tidak efektif, jadwal ujian, pembagian rapor, dan libur jeda semester.<br>
+            <strong>Tips Prompt AI:</strong> Masukkan data mentah dari Dinas Pendidikan wilayah Anda, lalu minta AI menghitung ulang total hari efektifnya.
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 3. KATEGORI ASESMEN -->
+    <section class="card">
+      <h2>3. Kategori: ASESMEN (Evaluasi & Pengukuran Kompetensi)</h2>
+      <p class="muted" style="margin-bottom: 16px; font-size: 13px;">Kategori untuk memvalidasi keberhasilan belajar siswa melalui instrumen yang valid, reliabel, dan terukur.</p>
+      
+      <ul class="help-list" style="margin-bottom: 0;">
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Bank Soal</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Cadangan amunisi instrumen tes untuk berbagai keperluan evaluasi mendadak atau terencana.<br>
+            <strong>Komponen Utama:</strong> Indikator, batang tubuh soal, opsi jawaban (jika PG), dan kunci jawaban/pembahasan.<br>
+            <strong>Tips Prompt AI:</strong> Tentukan proporsi tingkat kesulitan (misal: 20% Mudah, 50% Sedang, 30% HOTS/Sulit).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Kisi-Kisi</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Cetak biru (blueprint) kerangka naskah ujian agar soal tidak melenceng dari materi yang diajarkan.<br>
+            <strong>Komponen Utama:</strong> KD/TP, Materi, Indikator Soal, Level Kognitif (C1-C6), Bentuk Soal, dan Nomor Soal.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI menyajikannya dalam format tabel vertikal/horizontal yang rapi.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Asesmen Diagnostik</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Alat scanning awal untuk mendeteksi baseline pengetahuan (Kognitif) atau kondisi psikologis (Non-Kognitif) siswa.<br>
+            <strong>Komponen Utama:</strong> Pertanyaan esai pendek, kuesioner skala likert, atau soal pemantik dasar.<br>
+            <strong>Tips Prompt AI:</strong> Instruksikan untuk membuat soal dengan bahasa santai dan tidak mengintimidasi agar siswa menjawab jujur.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Asesmen Formatif</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Checkpoint pemahaman harian untuk memberikan feedback langsung, bukan sekadar nilai rapor.<br>
+            <strong>Komponen Utama:</strong> Pertanyaan lisan, kuis singkat, tiket keluar (exit ticket), atau lembar peer-assessment.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI membuat skenario kuis interaktif (seperti True/False cepat) yang bisa diselesaikan dalam 5-10 menit di akhir kelas.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Asesmen Sumatif</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Alat penghakiman akademis di akhir bab (UH) atau akhir semester (STS/SAS) sebagai komponen utama nilai rapor.<br>
+            <strong>Komponen Utama:</strong> Instruksi pengerjaan, naskah soal berbobot tinggi, kunci jawaban utuh, dan pedoman penskoran (skoring).<br>
+            <strong>Tips Prompt AI:</strong> Tempelkan semua TP yang diajarkan, lalu minta AI merancang soal kasus berbasis literasi dan numerasi.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Rubrik Penilaian</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Standar penjamin mutu agar penilaian tugas praktik/karya tidak bersifat subjektif (like and dislike guru).<br>
+            <strong>Komponen Utama:</strong> Aspek yang dinilai (Kerapian, Konten, Presentasi), Bobot, dan Deskripsi untuk tiap skor (1, 2, 3, 4).<br>
+            <strong>Tips Prompt AI:</strong> Tentukan produk yang dinilai secara spesifik (misal: Rubrik penilaian Poster Canva, Rubrik penilaian Pidato).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Lembar Observasi</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Instrumen perekam jejak aktivitas fisik, kolaborasi, dan antusiasme siswa secara real-time.<br>
+            <strong>Komponen Utama:</strong> Daftar nama siswa, indikator pengamatan (misal: berani bertanya, membantu teman), dan kolom ceklis/skala.<br>
+            <strong>Tips Prompt AI:</strong> Minta indikator yang mudah diamati secara kasat mata (perilaku spesifik), bukan indikator abstrak.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Jurnal Sikap</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Catatan insidental harian (anekdotal) untuk merekam kejadian positif/negatif yang signifikan.<br>
+            <strong>Komponen Utama:</strong> Waktu kejadian, nama siswa, deskripsi kejadian, butir sikap (Tanggung Jawab/Jujur), dan tindak lanjut.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI menyusun format matriks yang sesuai dengan enam dimensi Profil Pelajar Pancasila.
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 4. KATEGORI ADMINISTRASI -->
+    <section class="card">
+      <h2>4. Kategori: ADMINISTRASI (Birokrasi & Kepatuhan Tata Kelola)</h2>
+      <p class="muted" style="margin-bottom: 16px; font-size: 13px;">Kategori pendukung birokrasi kelas agar alur kerja fisik dan komunikasi dengan manajemen sekolah/orang tua tertata rapi.</p>
+      
+      <ul class="help-list" style="margin-bottom: 0;">
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Buku Tamu</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Rekam jejak fisik validasi pengawasan kelas atau kunjungan pihak luar.<br>
+            <strong>Komponen Utama:</strong> Tanggal, Nama Tamu, Instansi, Tujuan Kunjungan, Kesan/Pesan, dan Tanda Tangan.<br>
+            <strong>Tips Prompt AI:</strong> Minta format minimalis yang ramah cetak (Portrait/Landscape).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Buku Agenda</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Jurnal bukti fisik bahwa guru telah melaksanakan tugas mengajar sesuai jam yang ditentukan.<br>
+            <strong>Komponen Utama:</strong> Hari/Tanggal, Jam Ke-, Kelas, Materi/Topik yang diajarkan, Jumlah Hadir/Absen, dan Keterangan.<br>
+            <strong>Tips Prompt AI:</strong> Minta ditambahkan kolom persentase ketuntasan materi hari tersebut.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Daftar Hadir</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Dokumen rekapitulasi kehadiran siswa sebagai syarat kelengkapan evaluasi akhir semester.<br>
+            <strong>Komponen Utama:</strong> Nomor Urut, NIS/NISN, Nama Siswa, Kolom Tanggal/Bulan, Rekap S, I, A.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI membuat struktur tabel untuk format 31 hari dalam satu bulan (Landscape).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Notulen Rapat</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Bukti autentik hasil musyawarah dan keputusan mengikat antar guru atau dengan komite sekolah.<br>
+            <strong>Komponen Utama:</strong> Waktu, Tempat, Pemimpin Rapat, Agenda Utama, Dinamika Tanya Jawab, Keputusan Final, dan Daftar Hadir.<br>
+            <strong>Tips Prompt AI:</strong> Masukkan poin-poin mentah hasil diskusi, lalu minta AI merangkumnya menjadi bahasa birokrasi yang formal.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Surat Tugas</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Mandat legal formal (SPPD) untuk melakukan perjalanan dinas, diklat, atau mendampingi siswa lomba.<br>
+            <strong>Komponen Utama:</strong> Kop Surat, Konsideran (Menimbang/Mengingat), Identitas yang ditugaskan, Tujuan Penugasan, dan Tembusan.<br>
+            <strong>Tips Prompt AI:</strong> Sebutkan landasan hukum atau peraturan menteri terkait jika diperlukan untuk konsideran surat.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Surat Pemberitahuan</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Media komunikasi publik satu arah dari institusi sekolah kepada wali murid.<br>
+            <strong>Komponen Utama:</strong> Nomor Surat, Hal, Salam Pembuka, Isi (Jadwal/Lokasi/Biaya), Penutup, dan Tanda Tangan Kepala Sekolah.<br>
+            <strong>Tips Prompt AI:</strong> Instruksikan AI membuat bahasa yang tegas namun tetap sopan, serta sertakan format potongan konfirmasi di bagian bawah surat.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Tata Tertib</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Kontrak sosial yang mengikat warga kelas/sekolah untuk menciptakan iklim belajar yang aman dan disiplin.<br>
+            <strong>Komponen Utama:</strong> Hak siswa, Kewajiban siswa, Larangan keras, dan Mekanisme sanksi/poin pelanggaran.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI menggunakan pendekatan disiplin positif (bahasa apresiatif), bukan sekadar ancaman hukuman.
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 5. KATEGORI BAHAN & MEDIA -->
+    <section class="card">
+      <h2>5. Kategori: BAHAN & MEDIA (Pengayaan Visual, Audio & Teks)</h2>
+      <p class="muted" style="margin-bottom: 16px; font-size: 13px;">Kategori produksi konten kreatif. Berfungsi memecah kebosanan teori teks buku paket dengan pendekatan multimedia dan literasi yang menarik.</p>
+      
+      <ul class="help-list" style="margin-bottom: 0;">
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Bahan Bacaan</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Suplemen literasi untuk apersepsi atau pendalaman materi bagi siswa.<br>
+            <strong>Komponen Utama:</strong> Judul menarik, teks naratif/informatif, glosarium (kosakata sulit), dan pertanyaan reflektif di akhir.<br>
+            <strong>Tips Prompt AI:</strong> Instruksikan gaya penulisan storytelling atau diksi Gen-Z jika mengajar siswa SMP/SMA.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Skenario Video</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Cetak biru produksi konten audio-visual agar alur gambar dan suara sinkron saat proses shooting/editing.<br>
+            <strong>Komponen Utama:</strong> Tabel Scene, Visual (Deskripsi Video), Audio (Teks Voice Over / Musik), dan Durasi per scene.<br>
+            <strong>Tips Prompt AI:</strong> Minta format Two-Column Script (Visual di kiri, Audio di kanan) khusus untuk format Reels/Shorts (Vertical 9:16).
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Naskah Podcast</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Skrip rekaman suara untuk penugasan listening atau materi pengayaan berbasis auditory.<br>
+            <strong>Komponen Utama:</strong> Bumper in/out, pengenalan host, naskah wawancara/monolog bergaya kasual, dan efek suara (SFX).<br>
+            <strong>Tips Prompt AI:</strong> Tambahkan karakter pembicara (misal: Host energik, Narasumber ahli sejarah) agar AI menyesuaikan diksi dialognya.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Slide Presentasi</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Kerangka informasi padat untuk ditayangkan, mencegah presentasi berubah menjadi dinding teks (wall of text).<br>
+            <strong>Komponen Utama:</strong> Slide Judul, Hook/Apersepsi, Poin Materi Inti, Infografis/Chart (Saran visual), Kesimpulan, dan Kuis interaktif.<br>
+            <strong>Tips Prompt AI:</strong> Beri batasan ketat (misal: "Maksimal 6 slide, setiap slide maksimal 3 poin bullet, tanpa kalimat panjang").
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Ide Games</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Desain aktivitas kinestetik atau kompetisi ringan untuk meningkatkan engagement siswa.<br>
+            <strong>Komponen Utama:</strong> Nama permainan, alat/bahan yang disiapkan, aturan main, hukuman edukatif, dan makna filosofis permainan.<br>
+            <strong>Tips Prompt AI:</strong> Sebutkan batasan ruang (misal: "Hanya bisa dimainkan sambil duduk di dalam kelas tanpa properti").
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Flashcard</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Media drill & practice memori jangka pendek untuk mengingat konsep, rumus, atau kosakata.<br>
+            <strong>Komponen Utama:</strong> Sisi Depan (Gambar/Soal singkat), Sisi Belakang (Jawaban ringkas/Definisi).<br>
+            <strong>Tips Prompt AI:</strong> Minta AI mengurutkan 20 konsep dari yang paling dasar hingga paling kompleks.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Poster Edukasi</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Kampanye visual satu lembar untuk kampanye kebersihan, tata tertib, atau ringkasan rumus.<br>
+            <strong>Komponen Utama:</strong> Headline utama (catchy), Poin informasi singkat pendukung, dan Ide ilustrasi grafis.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI fokus memproduksi frasa pendek bergaya copywriting persuasif, bukan kalimat deskriptif.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Teks Pidato</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Naskah komunikasi massa untuk upacara, peringatan hari besar, atau lomba.<br>
+            <strong>Komponen Utama:</strong> Salam pembuka (protokoler), mukadimah, isi pesan, himbauan bertindak (call to action), dan penutup.<br>
+            <strong>Tips Prompt AI:</strong> Tentukan durasi baca (misal: pidato 3 menit) dan target audiens (siswa SD vs guru) agar nada bahasanya pas.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Teks Puisi / Cerita Pendek / Teks Lainnya</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Integrasi seni sastra untuk menanamkan pendidikan karakter atau materi tematik tanpa menggurui.<br>
+            <strong>Komponen Utama:</strong> Judul, tema, konflik batin/sosial (untuk cerpen), dan rima/majas (untuk puisi).<br>
+            <strong>Tips Prompt AI:</strong> Masukkan pesan moral spesifik (misal: bahaya bullying) dan minta AI menyisipkannya secara halus (show, don't tell).
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- 6. KATEGORI REFLEKSI -->
+    <section class="card">
+      <h2>6. Kategori: REFLEKSI & PENGEMBANGAN (Peningkatan Mutu Berkelanjutan)</h2>
+      <p class="muted" style="margin-bottom: 16px; font-size: 13px;">Kategori untuk profesionalisme guru, pelaporan administrasi kelembagaan, dan pemenuhan dokumen kenaikan pangkat.</p>
+      
+      <ul class="help-list" style="margin-bottom: 0;">
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Refleksi Pembelajaran</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Jurnal evaluasi mandiri guru pasca-mengajar untuk mendeteksi celah kegagalan instruksional.<br>
+            <strong>Komponen Utama:</strong> Hal yang sudah berjalan baik, hal yang masih menjadi kendala, respons siswa, dan rencana perbaikan.<br>
+            <strong>Tips Prompt AI:</strong> Masukkan keluhan mentah Anda (misal: "Siswa banyak yang tidur saat materi ini"), lalu minta AI mengubahnya menjadi bahasa refleksi akademis.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Jurnal Evaluasi</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Rekapitulasi progresivitas hasil belajar kelas selama satu bulan atau akhir semester.<br>
+            <strong>Komponen Utama:</strong> Periode evaluasi, metrik ketercapaian nilai rata-rata, analisis penyebab ketidaktuntasan, dan rekomendasi strategis.<br>
+            <strong>Tips Prompt AI:</strong> Minta AI membuat format analisis SWOT (Kekuatan, Kelemahan, Peluang, Ancaman) terhadap metode mengajar Anda.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Catatan Tindak Lanjut</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Dokumen janji komitmen perbaikan mutu sebagai respons dari hasil Supervisi Kepala Sekolah.<br>
+            <strong>Komponen Utama:</strong> Area perbaikan, langkah aksi nyata (SMART), target waktu penyelesaian, dan pihak yang dilibatkan.<br>
+            <strong>Tips Prompt AI:</strong> Perintahkan AI menyusun langkah-langkah yang rasional dan terjangkau (actionable), bukan solusi teoretis muluk.
+          </div>
+        </li>
+        <li style="margin-bottom: 16px;">
+          <strong style="font-size: 14px; color: var(--primary);">Laporan Pengembangan</strong>
+          <div style="margin-top: 4px; font-size: 13px; line-height: 1.6; color: var(--text);">
+            <strong>Fungsi & Kegunaan:</strong> Laporan portofolio sah untuk pengajuan angka kredit setelah mengikuti KKG/MGMP/Diklat.<br>
+            <strong>Komponen Utama:</strong> Latar belakang, nama kegiatan, waktu pelaksanaan, ringkasan materi yang diperoleh, dan dampak terhadap kinerja di kelas.<br>
+            <strong>Tips Prompt AI:</strong> Masukkan poin-poin materi diklat secara acak, lalu minta AI menstrukturnya menjadi laporan deskriptif 3-4 paragraf yang profesional.
+          </div>
+        </li>
+      </ul>
+    </section>
+
   </div>`;
 }
+
+
 
 /* ==========================================================================
  * KELOMPOK PENANGANAN EVENT & INISIALISASI (F57 - F62)
