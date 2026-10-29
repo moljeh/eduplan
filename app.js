@@ -1919,56 +1919,28 @@ async function mutateDocument(action, id, value) {
  * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
  * Deskripsi: Halaman untuk guru mengubah data pribadi (Nama, Sekolah).
  * ========================================================================== */
-/* ==========================================================================
- * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
- * ========================================================================== */
-/* ==========================================================================
- * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
- * ========================================================================== */
 function renderProfile() {
   setRoute('profile', 'Profil guru & sekolah');
-  
   $('#content').innerHTML = `<div class="stack">
-    ${pageHead('Profil Anda', 'Perbarui informasi pribadi dan instansi tempat Anda mengajar.')}
-    
+    ${pageHead('Profil guru & sekolah', 'Identitas ini digunakan sebagai konteks saat membuat dokumen.')}
     <form class="card" data-form="profile">
-      <h2>Data Diri & Sekolah</h2>
       <div class="form-grid">
-        ${field('name', 'Nama lengkap', state.user.name, {required: true, max: 100})}
-        ${field('school', 'Nama instansi/sekolah', state.user.school, {required: true, max: 150})}
-      </div>
-      
-      <h2 style="margin-top: 32px;">Keamanan Akun</h2>
-      <div class="notice">Kosongkan kolom sandi jika tidak ingin menggantinya. Email tidak dapat diubah.</div>
-      
-      <!-- GRID BARU: Sandi dan Email sejajar -->
-      <div class="form-grid">
-        <label class="field">
-          <span>Kata sandi baru</span>
-          <div style="position: relative; display: flex; align-items: center;">
-            <input id="profile-password" name="newPassword" type="password" minlength="6" placeholder="Minimal 6 karakter" style="width: 100%; padding-right: 40px; box-sizing: border-box;">
-            <button type="button" tabindex="-1" onclick="
-              const pwd = document.getElementById('profile-password');
-              if (pwd.type === 'password') { 
-                pwd.type = 'text'; 
-                this.innerHTML = '<svg width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22\\'></path></svg>';
-              } else { 
-                pwd.type = 'password'; 
-                this.innerHTML = '<svg width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>';
-              }
-            " style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #666; padding: 0; display: flex; align-items: center; justify-content: center;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </button>
-          </div>
-        </label>
-        
-        <!-- KOLOM EMAIL DITAMBAHKAN KEMBALI DI SINI -->
+        ${field('name', 'Nama guru', state.user.name, {required: true, max: 100})}
+        ${field('school', 'Nama sekolah', state.user.school, {max: 200})}
         ${field('email', 'Email akun', state.user.email, {disabled: true})}
+        ${field('role', 'Peran', state.user.role, {disabled: true})}
       </div>
-      
-      <button class="btn btn-primary mt-20" type="submit">Simpan Perubahan</button>
+      <p class="muted">Email akun tidak dapat diganti. Peran dan status akun dikelola admin.</p>
+      <button class="btn btn-primary" type="submit">Simpan profil</button>
     </form>
   </div>`;
+}
+
+async function saveProfile(form) {
+  await run(async () => {
+    state.user = await api('saveProfile', formValues(form));
+    renderShell(); renderProfile(); showToast('Profil disimpan.');
+  }, 'Menyimpan profil...');
 }
 
 
