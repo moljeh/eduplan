@@ -1238,6 +1238,11 @@ function renderDashboard() {
 window.showTopUpOptions = async function(userEmail) {
   const adminWhatsApp = '6287846666636'; // Ganti dengan nomor WhatsApp Admin
 
+  // KODE BARU: Mencegah HP keluar aplikasi saat back ditekan
+  history.pushState({ popup: 'topup' }, '');
+  const closeOnBack = () => Swal.close();
+  window.addEventListener('popstate', closeOnBack);
+
   const { value: selectedPackage } = await Swal.fire({
     title: 'Pilih Paket Top-Up',
     width: '460px',
@@ -1348,11 +1353,20 @@ window.showTopUpOptions = async function(userEmail) {
     confirmButtonColor: '#10b981',
     cancelButtonColor: '#94a3b8',
     reverseButtons: true,
-    customClass: {
+
+customClass: {
       confirmButton: 'btn-primary',
       popup: 'modern-popup'
     },
+    willClose: () => {
+      // KODE BARU: Hapus event listener saat popup ditutup, dan sesuaikan riwayat kembali
+      window.removeEventListener('popstate', closeOnBack);
+      if (history.state && history.state.popup === 'topup') {
+        history.back();
+      }
+    },
     preConfirm: () => {
+
       const selected = document.querySelector('input[name="topup-package"]:checked');
       if (!selected) {
         Swal.showValidationMessage('Silakan pilih salah satu paket Top-Up');
