@@ -57,7 +57,7 @@ const TITLES = {
 };
 
 const state = {
-  token: sessionStorage.getItem(CONFIG.SESSION_KEY) || '',
+  token: localStorage.getItem(CONFIG.SESSION_KEY) || '',
   user: null,
   catalog: {},
   providers: [],
@@ -792,7 +792,7 @@ case 'updateProfile':
  *            layar login, verifikasi login, dan memuat data awal (boot).
  * ========================================================================== */
 function clearSession() {
-  sessionStorage.removeItem(CONFIG.SESSION_KEY);
+  localStorage.removeItem(CONFIG.SESSION_KEY);
   state.token = '';
   state.user = null;
   state.editor = null;
@@ -900,7 +900,7 @@ async function register(form) {
     });
     // Otomatis masuk setelah daftar berhasil
     state.token = session.token;
-    sessionStorage.setItem(CONFIG.SESSION_KEY, state.token);
+    localStorage.setItem(CONFIG.SESSION_KEY, state.token);
     applyBoot(await api('boot'));
     renderShell();
     renderDashboard();
@@ -920,7 +920,7 @@ async function login(form) {
     });
     
     state.token = session.token;
-    sessionStorage.setItem(CONFIG.SESSION_KEY, state.token);
+    localStorage.setItem(CONFIG.SESSION_KEY, state.token);
     applyBoot(await api('boot'));
     renderShell();
     renderDashboard();
