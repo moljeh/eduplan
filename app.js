@@ -1171,6 +1171,16 @@ async function mayLeave() {
 async function navigate(route, category = '', isBack = false) {
   if (!(await mayLeave())) return;
   
+  // Tutup menu secara visual jika sedang terbuka
+  if (document.body.classList.contains('menu-open')) {
+    document.body.classList.remove('menu-open');
+    // Ganti state riwayat menu agar tombol kembali di HP tidak berantakan
+    if (history.state && history.state.menu === 'open') {
+      history.replaceState({ action: 'navigate', route: route, category: category }, '');
+      isBack = true; // Mencegah rekam riwayat ganda
+    }
+  }
+  
   // Jika pindah secara normal (bukan lewat tombol kembali), rekam riwayatnya
   if (!isBack) {
     if (route === 'category') {
@@ -2896,11 +2906,19 @@ async function onClick(event) {
     case 'theme': return toggleTheme();
 
 
-    case 'toggle-menu':
-      document.body.classList.toggle('menu-open'); 
+case 'toggle-menu':
+      if (document.body.classList.contains('menu-open')) {
+        history.back(); // Memanfaatkan tombol kembali sistem untuk menutup
+      } else {
+        history.pushState({ menu: 'open' }, ''); // Merekam bahwa menu sedang terbuka
+        document.body.classList.add('menu-open'); 
+      }
       return;
+      
     case 'close-menu': 
-      document.body.classList.remove('menu-open'); 
+      if (document.body.classList.contains('menu-open')) {
+         history.back(); // Menutup menu saat area gelap (backdrop) diketuk
+      }
       return;
 
 
