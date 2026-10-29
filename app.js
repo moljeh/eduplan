@@ -72,7 +72,15 @@ const state = {
   admin: null,
   filters: {query: '', type: '', provider: '', page: 1},
   toastTimer: null,
-  tempReference: ''
+  tempReference: '',
+  tempSubject: '',
+  tempLevel: '',
+  tempTopic: '',
+  tempDuration: '',
+  tempYear: '',
+  tempSemester: '',
+  tempCurriculum: '',
+  tempJumlahSoal: ''
 };
 
 /* ==========================================================================
@@ -636,6 +644,7 @@ async function api(action, params = {}) {
         
         return { text: rFullText };
 		
+
       case 'generate':
         const genProvRef = doc(db, "Providers", params.provider || 'gemini');
         const genProvSnap = await getDoc(genProvRef);
@@ -645,15 +654,23 @@ async function api(action, params = {}) {
         const apiKeyGen = genProvSnap.data().key;
         const modelNameGen = genProvSnap.data().model || (params.provider === 'openai' ? 'gpt-4o' : params.provider === 'claude' ? 'claude-3-5-sonnet-20241022' : 'gemini-3.8-flash');
 
+        // PERBAIKAN: Menambahkan instruksi sistem agar SOAL dan JAWABAN selalu dipisah
+        let extraPrompt = "";
+        if (['bank_soal', 'asesmen_sumatif', 'asesmen_formatif', 'asesmen_diagnostik', 'program_remedial', 'program_pengayaan', 'lkpd'].includes(params.type)) {
+          extraPrompt = "PENTING: Pisahkan bagian SOAL dan KUNCI JAWABAN. Tuliskan SELURUH soal terlebih dahulu dari nomor awal sampai akhir, JANGAN menyisipkan kunci jawaban di bawah masing-masing soal. Buat bagian baru dengan judul 'KUNCI JAWABAN' di bagian paling bawah dokumen.";
+        }
+
         const promptText = `Anda adalah asisten AI profesional untuk guru di Indonesia. Buat draf ${params.type.replace(/_/g, ' ')}.
 Mata Pelajaran: ${params.subject || '-'}
 Fase/Kelas: ${params.level || '-'}
 Topik: ${params.topic || '-'}
 Konteks/Referensi: ${params.reference || '-'}
 Instruksi Khusus: ${params.instructions || '-'}
+${extraPrompt}
 Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digunakan tanpa basa-basi atau kalimat pembuka/penutup.`;
 
         let fullText = "";
+
         const activeProvider = params.provider || 'gemini';
         let response;
 
@@ -1503,8 +1520,9 @@ function getReferenceExample(type) {
 
 function getFormConfig(type, providers) {
   const classOptions = ['PAUD / TK', 'Kelas 1 SD/MI (Fase A)', 'Kelas 2 SD/MI (Fase A)', 'Kelas 3 SD/MI (Fase B)', 'Kelas 4 SD/MI (Fase B)', 'Kelas 5 SD/MI (Fase C)', 'Kelas 6 SD/MI (Fase C)', 'Kelas 7 SMP/MTs (Fase D)', 'Kelas 8 SMP/MTs (Fase D)', 'Kelas 9 SMP/MTs (Fase D)', 'Kelas 10 SMA/SMK/MA (Fase E)', 'Kelas 11 SMA/SMK/MA (Fase F)', 'Kelas 12 SMA/SMK/MA (Fase F)', 'Lainnya / Umum'];
+  
   const baseFields = `
-    ${field('subject', 'Mata pelajaran *', '', {required: true, max: 150})}
+    ${field('subject', 'Mata pelajaran *', '', {required: true, max: 150, placeholder: 'Contoh: Pendidikan Agama Islam'})}
     <label class="field">
       <span>Jenjang / kelas / fase *</span>
       <select name="level_select" id="level-select" required>
@@ -1512,9 +1530,9 @@ function getFormConfig(type, providers) {
       </select>
     </label>
     <div id="custom-level-container" style="display: none;">
-      ${field('level_custom', 'Ketikkan jenjang/kelas spesifik *', '', {max: 100})}
+      ${field('level_custom', 'Ketikkan jenjang/kelas spesifik *', '', {max: 100, placeholder: 'Contoh: Semester 1 / Mahasiswa'})}
     </div>
-    ${field('topic', 'Materi / topik *', '', {required: true, max: 200})}
+    ${field('topic', 'Materi / topik *', '', {required: true, max: 200, placeholder: 'Contoh: Bab 1 / Pecahan Senilai'})}
   `;
   const providerField = selectField('provider', 'Provider AI', providers);
   let grid = '', textareas = '';
@@ -1526,7 +1544,7 @@ function getFormConfig(type, providers) {
     case 'rencana_mingguan':
     case 'tp':
     case 'atp':
-      grid = `${field('duration', 'Alokasi waktu (JP/Menit)', '', {max: 150})}${field('curriculum', 'Kurikulum (Merdeka/K13)', '', {max: 150})}`;
+      grid = `${field('duration', 'Alokasi waktu (JP/Menit)', '', {max: 150, placeholder: 'Contoh: 2 x 35 Menit'})}${field('curriculum', 'Kurikulum (Merdeka/K13)', '', {max: 150, placeholder: 'Contoh: Kurikulum Merdeka'})}`;
       textareas = `${textarea('reference', 'Rujukan Materi', getReferenceExample(type))}${textarea('instructions', 'Kebutuhan Khusus (Misal: Gunakan metode Problem Based Learning)', 'Contoh: Rancang dengan metode PBL dan masukkan asesmen formatif.')}`;
       break;
     case 'bank_soal':
@@ -1534,18 +1552,18 @@ function getFormConfig(type, providers) {
     case 'asesmen_sumatif':
     case 'asesmen_formatif':
     case 'asesmen_diagnostik':
-      grid = `${field('jumlah_soal', 'Jumlah Soal', '', {type: 'number', max: 100})}${selectField('bentuk_soal', 'Bentuk Soal', ['Pilihan Ganda', 'Uraian', 'Isian Singkat', 'Campuran'])}`;
+      grid = `${field('jumlah_soal', 'Jumlah Soal', '', {type: 'number', max: 100, placeholder: 'Contoh: 10'})}${selectField('bentuk_soal', 'Bentuk Soal', ['Pilihan Ganda', 'Uraian', 'Isian Singkat', 'Campuran'])}`;
       textareas = `${textarea('reference', 'Indikator Soal / Kisi-kisi / Teks Bacaan', getReferenceExample(type))}${textarea('instructions', 'Level Kognitif / Format (Misal: Buat soal HOTS C4-C6)', 'Contoh: 10 soal pilihan ganda level HOTS beserta kunci jawaban.')}`;
       break;
     case 'prota':
     case 'promes':
     case 'kalender_pendidikan':
     case 'distribusi_tp':
-      grid = `${field('year', 'Tahun ajaran', '', {max: 40})}${selectField('semester', 'Semester', ['Ganjil', 'Genap'])}`;
+      grid = `${field('year', 'Tahun ajaran', '', {max: 40, placeholder: 'Contoh: 2026/2027'})}${selectField('semester', 'Semester', ['Ganjil', 'Genap'])}`;
       textareas = `${textarea('reference', 'Data Kalender Pendidikan / Total Minggu Efektif', getReferenceExample(type))}${textarea('instructions', 'Catatan Libur / Jadwal Ujian', 'Contoh: Masukkan jadwal PTS di minggu ke-8 dan libur nasional.')}`;
       break;
     default:
-      grid = `${field('year', 'Tahun ajaran', '', {max: 40})}${selectField('semester', 'Semester', ['Ganjil', 'Genap'])}${field('duration', 'Keterangan waktu / Periode', '', {max: 150})}`;
+      grid = `${field('year', 'Tahun ajaran', '', {max: 40, placeholder: 'Contoh: 2026/2027'})}${selectField('semester', 'Semester', ['Ganjil', 'Genap'])}${field('duration', 'Keterangan waktu / Periode', '', {max: 150, placeholder: 'Contoh: Bulan Oktober 2026'})}`;
       textareas = `${textarea('reference', 'Rujukan resmi / Data mentah (opsional)', getReferenceExample(type))}${textarea('instructions', 'Format laporan / Kebutuhan khusus', 'Contoh: Buatkan dalam bentuk tabel yang mudah dibaca.')}`;
       break;
   }
@@ -1581,9 +1599,105 @@ async function renderGenerator(type, isBack = false) {
   </div>`;
   
   if (state.tempReference) {
-    const referenceField = document.querySelector('textarea[name="reference"]');
-    if (referenceField) referenceField.value = state.tempReference;
-    state.tempReference = '';
+    // PERBAIKAN: Gunakan setTimeout agar browser selesai melakukan "paint" DOM
+    // Mencegah dropdown macet atau freeze saat diisi otomatis oleh script
+    setTimeout(() => {
+      const referenceField = document.querySelector('textarea[name="reference"]');
+      if (referenceField) referenceField.value = state.tempReference;
+      
+      // --- TEMBAKKAN HASIL EKSTRAKSI KE SELURUH KOLOM ---
+      const subjectField = document.querySelector('input[name="subject"]');
+      const topicField = document.querySelector('input[name="topic"]');
+      const durationField = document.querySelector('input[name="duration"]');
+      const curriculumField = document.querySelector('input[name="curriculum"]');
+      const yearField = document.querySelector('input[name="year"]');
+      const semesterSelect = document.querySelector('select[name="semester"]');
+      const jumlahSoalField = document.querySelector('input[name="jumlah_soal"]');
+      const levelSelect = document.getElementById('level-select');
+      const levelCustom = document.querySelector('input[name="level_custom"]');
+      const customContainer = document.getElementById('custom-level-container');
+
+      if (state.tempSubject && subjectField) subjectField.value = state.tempSubject;
+      if (state.tempTopic && topicField) topicField.value = state.tempTopic;
+      if (state.tempDuration && durationField) durationField.value = state.tempDuration;
+      if (state.tempCurriculum && curriculumField) curriculumField.value = state.tempCurriculum;
+      if (state.tempYear && yearField) yearField.value = state.tempYear;
+      if (state.tempSemester && semesterSelect) semesterSelect.value = state.tempSemester;
+      if (jumlahSoalField) jumlahSoalField.value = state.tempJumlahSoal || '10';
+      
+   if (state.tempLevel && levelSelect) {
+         let matched = false;
+         let tLevel = state.tempLevel.toLowerCase();
+         
+         // 1. Pencocokan langsung
+         for (let i = 0; i < levelSelect.options.length; i++) {
+           let optVal = levelSelect.options[i].value.toLowerCase();
+           if (optVal.includes(tLevel) || tLevel.includes(optVal)) {
+              levelSelect.selectedIndex = i;
+              matched = true;
+              break;
+           }
+         }
+         
+         // 2. Pencocokan pintar menggunakan deteksi angka/angka romawi
+         if (!matched) {
+            const romanMap = {'i': '1', 'ii': '2', 'iii': '3', 'iv': '4', 'v': '5', 'vi': '6', 'vii': '7', 'viii': '8', 'ix': '9', 'x': '10', 'xi': '11', 'xii': '12'};
+            let classNum = null;
+            
+            let numMatch = tLevel.match(/\b(1[0-2]|[1-9])\b/);
+            if (numMatch) {
+                classNum = numMatch[1];
+            } else {
+                let romanMatch = tLevel.match(/\b(viii|vii|vi|iv|v|iii|ii|ix|xi|xii|x|i)\b/);
+                if (romanMatch) {
+                    classNum = romanMap[romanMatch[1]];
+                }
+            }
+
+            if (classNum) {
+                for (let i = 0; i < levelSelect.options.length; i++) {
+                    let optVal = levelSelect.options[i].value.toLowerCase();
+                    if (optVal.includes('kelas ' + classNum + ' ')) {
+                        levelSelect.selectedIndex = i;
+                        matched = true;
+                        break;
+                    }
+                }
+            }
+         }
+
+         // 3. Jika benar-benar tidak terdeteksi, baru masukkan ke Custom
+         if (!matched) {
+            levelSelect.value = 'Lainnya / Umum';
+            // PERBAIKAN A: Paksa secara eksplisit agar gaya style 'display' berubah langsung
+            if (customContainer) customContainer.style.display = 'block';
+            if (levelCustom) {
+               levelCustom.value = state.tempLevel;
+               levelCustom.required = true;
+            }
+         } else {
+            // PERBAIKAN B: Jika terdeteksi bukan "Lainnya", paksa kontainer tertutup 
+            if (customContainer) customContainer.style.display = 'none';
+            if (levelCustom) levelCustom.required = false;
+         }
+         
+         // PERBAIKAN C: Picu ulang event dengan jeda 10ms agar peramban merender ulang dropdown tanpa macet
+         setTimeout(() => {
+            levelSelect.dispatchEvent(new Event('change', { bubbles: true }));
+         }, 10);
+      }
+
+      // Bersihkan memori setelah ditembakkan
+      state.tempReference = '';
+      state.tempSubject = '';
+      state.tempLevel = '';
+      state.tempTopic = '';
+      state.tempDuration = '';
+      state.tempYear = '';
+      state.tempSemester = '';
+      state.tempCurriculum = '';
+      state.tempJumlahSoal = '';
+    }, 50); // Jeda 50 milidetik agar HTML selesai terbentuk di layar
   }
 }
 
@@ -1917,7 +2031,7 @@ async function exportDocument(format) {
       </div>
     `;
 
-    const rows = rawText.split('\n');
+const rows = rawText.split('\n');
     let htmlRows = [];
     let inTable = false;
     let isHeaderRow = true;
@@ -1925,6 +2039,7 @@ async function exportDocument(format) {
     let skipSignatureLines = false;
     let inKvTable = false; 
     let forcePageBreak = false; 
+    let contentCounter = 0; // <-- TAMBAHAN: Untuk mencegah halaman pertama kosong
 
     for (let row of rows) {
       let tRow = row.trim();
@@ -1941,9 +2056,10 @@ async function exportDocument(format) {
         }
       }
 
-   if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
+      if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
         skipSignatureLines = true;
         forcePageBreak = true; 
+        contentCounter++; // Dihitung sebagai konten
         const namaGuru = escapeHTML(state.user.name || '..................................................');
         
         htmlRows.push(`
@@ -2032,6 +2148,7 @@ async function exportDocument(format) {
         } else {
           htmlRows.push(rowHtml);
         }
+        contentCounter++; // Dihitung sebagai konten
 
       } else {
         if (inTable) {
@@ -2072,6 +2189,7 @@ async function exportDocument(format) {
                         <td width="71%" style="width: 71%; padding: 2px 4px; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; text-align: justify; line-height: 1.5;">${val}</td>
                       </tr>
             `);
+            contentCounter++; // Dihitung sebagai konten
             continue; 
         
         } else {
@@ -2086,45 +2204,44 @@ async function exportDocument(format) {
             }
         }
 
-       
-
-        
-let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
+        let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
         let cleanUpper = cleanTextForMatch.toUpperCase();
         
-        // 1. Deteksi Dasar Judul (Bab A, B, I, II, dll)
         let isHeading = cleanTextForMatch.match(/^([A-Z]|[IVX]+)\.\s+/) || cleanUpper.match(/^(LAMPIRAN|ASESMEN|RUBRIK|KISI-KISI|LEMBAR KERJA)/);
-        
-        // 2. Deteksi Cerdas Lembar Wajib Pisah (Menghapus Penghitungan Nilai, Menambahkan Kisi-Kisi & Lampiran)
         let isMandatoryNewPage = forcePageBreak || cleanUpper.includes('KUNCI JAWABAN') || cleanUpper.includes('PEDOMAN PENSKORAN') || cleanUpper.includes('LEMBAR OBSERVASI') || cleanUpper.includes('RUBRIK') || cleanUpper.includes('KISI-KISI') || cleanUpper.includes('LAMPIRAN');
 
-        // Jika terdeteksi kata wajib pisah dan teksnya berupa judul pendek, paksa jadi judul!
         if (isMandatoryNewPage && cleanTextForMatch.length < 120) {
             isHeading = true;
         }
 
-        if (isHeading && cleanTextForMatch.length < 120) {
+       if (isHeading && cleanTextForMatch.length < 120) {
           let pageBreakHtml = '';
           
-          // Mengeksekusi pindah halaman untuk lembar khusus
           if (isMandatoryNewPage) {
-            pageBreakHtml = '<div style="page-break-before: always;"></div>';
+            // PERBAIKAN UTAMA: Hanya buat halaman baru JIKA sudah ada konten sebelumnya
+            if (contentCounter > 0) {
+                // Tambahkan spasi/margin ekstra setelah page-break agar judul tidak terpotong header printer
+                pageBreakHtml = '<div style="page-break-before: always; margin-top: 10px;"></div>';
+            }
             forcePageBreak = false; 
           }
           
           let formattedRow = escapeHTML(cleanRow).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
-          htmlRows.push(`${pageBreakHtml}<h3 style="margin-top: 16px; margin-bottom: 8px; font-size: 12pt; font-weight: bold; font-family: 'Times New Roman', Times, serif; text-align: left; text-transform: uppercase;">${formattedRow}</h3>`);
-        
+          
+          // Pertegas ukuran font judul dan berikan margin atas yang layak
+          htmlRows.push(`${pageBreakHtml}<h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 13pt; font-weight: bold; font-family: 'Times New Roman', Times, serif; text-align: left; text-transform: uppercase;">${formattedRow}</h3>`);
+          contentCounter++; // Dihitung sebagai konten
+          
         } else if (listMatch) {
           let marker = listMatch[0].trim(); 
           if (marker === '-' || marker === '*') marker = '&#8226;'; 
-          
           let rawListText = cleanRow.substring(listMatch[0].length).trim();
           rawListText = rawListText.replace(/^>\s*/, '');
           let listText = escapeHTML(rawListText).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
           
           htmlRows.push(`<div style="margin-left: 28px; text-indent: -28px; margin-bottom: 4px; text-align: justify; font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${marker}&nbsp;&nbsp;${listText}</div>`);
-        
+          contentCounter++; // Dihitung sebagai konten
+          
         } else if (cleanRow === '') {
           htmlRows.push('<div style="height: 8px;"></div>');
         } else {
@@ -2134,6 +2251,7 @@ let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
             ? 'margin-top: 12px; margin-bottom: 12px; text-align: center; font-weight: bold;'
             : 'margin-bottom: 6px; text-align: justify;'; 
           htmlRows.push(`<div style="${pStyle} font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${formattedRow}</div>`);
+          contentCounter++; // Dihitung sebagai konten
         }
       }
     }
@@ -2143,19 +2261,123 @@ let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
 
     const processedHTML = htmlRows.join('\n');
 
-    const finalHTML = `
+const finalHTML = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
         <meta charset="utf-8">
         <title>${title}</title>
-        <!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom><w:DoNotOptimizeForBrowser/></w:WordDocument></xml><![endif]-->
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+            <w:PunctuationKerning/>
+            <w:ValidateAgainstSchemas/>
+            <w:SaveIfXMLInvalid>false</w:SaveIfXMLInvalid>
+            <w:IgnoreMixedContent>false</w:IgnoreMixedContent>
+            <w:AlwaysShowPlaceholderText>false</w:AlwaysShowPlaceholderText>
+            <w:Compatibility>
+              <w:BreakWrappedTables/>
+              <w:SnapToGridInCell/>
+              <w:WrapTextWithPunct/>
+              <w:UseAsianBreakRules/>
+              <w:DontGrowAutofit/>
+            </w:Compatibility>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
         <style>
-          @page { size: A4; margin: 2cm 2.5cm 2.5cm 2.5cm; }
-          body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; color: black; background: white; margin: 0; padding: 0; }
-          table { page-break-inside: auto; }
-          tr { page-break-inside: avoid; page-break-after: auto; }
+          /* 1. Pengaturan Dasar Halaman Kertas (A4 Standar) */
+          @page { 
+            size: A4; 
+            margin: 2cm 2.5cm 2.5cm 2.5cm; 
+            @bottom-right {
+              content: counter(page);
+              font-family: 'Times New Roman', Times, serif;
+              font-size: 10pt;
+            }
+          }
+          
+          /* 2. Pemformatan Teks Global */
+          body { 
+            font-family: 'Times New Roman', Times, serif; 
+            font-size: 12pt; 
+            line-height: 1.5; 
+            color: black; 
+            background: white; 
+            margin: 0; 
+            padding: 0; 
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+          }
+          
+          /* 3. Pengendalian Paragraf dan Judul (Heading) */
+          p, div { 
+            margin-bottom: 8px; 
+            text-align: justify; 
+            orphans: 3; /* Mencegah teks yatim-piatu di ujung halaman */
+            widows: 3; 
+          }
+          h1, h2, h3, h4 {
+            page-break-after: avoid; /* Mencegah judul terpisah dari paragraf di bawahnya */
+            margin-top: 18px;
+            margin-bottom: 8px;
+            line-height: 1.2;
+          }
+          
+          /* 4. Pemformatan Tabel Profesional */
+          table { 
+            width: 100% !important; /* Paksa memenuhi margin */
+            border-collapse: collapse; 
+            page-break-inside: auto; 
+            margin-top: 12px;
+            margin-bottom: 20px;
+          }
+          tr { 
+            page-break-inside: avoid; /* Mencegah baris tabel terpotong di tengah antar halaman */
+            page-break-after: auto; 
+          }
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; }
+          
+          th, td {
+            padding: 8px 10px;
+            border: 1pt solid black;
+            vertical-align: top; /* Teks selalu rata atas pada tabel */
+          }
+          
+          /* Rata tengah untuk Header Tabel */
+          th {
+            background-color: #f2f2f2; /* Efek abu-abu lembut agar elegan di PDF */
+            font-weight: bold;
+            text-align: center !important; 
+            vertical-align: middle;
+          }
+
+          /* 5. Perbaikan Daftar (Lists / Bullets) */
+          ul, ol {
+            margin-top: 4px;
+            margin-bottom: 12px;
+            padding-left: 28px;
+          }
+          li {
+            margin-bottom: 4px;
+            text-align: justify;
+          }
+          
+          /* 6. Aturan Khusus Saat Dicetak (Ctrl+P / PDF) */
+          @media print {
+            body { 
+              width: 100%;
+            }
+            .no-print { 
+              display: none !important; 
+            }
+            /* Hilangkan bayangan/border abu-abu tabel jika ada sisa rendering browser */
+            table { border-color: black; }
+            th { -webkit-print-color-adjust: exact; color-adjust: exact; background-color: #f2f2f2 !important; }
+          }
         </style>
       </head>
       <body>
@@ -2306,14 +2528,18 @@ function renderProfile() {
         ${field('phone', 'No. Kontak / Telepon', state.user.phone || '', {max: 30, placeholder: 'Contoh: 087846666636'})}
       </div>
       
-      <h2 style="margin-top: 32px;">Keamanan Akun</h2>
+<h2 style="margin-top: 32px;">Keamanan Akun</h2>
       <div class="notice">Kosongkan kolom sandi jika tidak ingin menggantinya. Email tidak dapat diubah.</div>
+      
+      <!-- TRIK DECOY: Umpan tersembunyi agar Chrome tidak nyasar mengisi email ke kolom Mata Pelajaran -->
+      <input type="text" name="fake_username_decoy" style="display: none;" aria-hidden="true" autocomplete="username">
       
       <div class="form-grid">
         <label class="field">
           <span>Kata sandi baru</span>
           <div style="position: relative; display: flex; align-items: center;">
-            <input id="profile-password" name="newPassword" type="password" minlength="6" placeholder="Minimal 6 karakter" style="width: 100%; padding-right: 40px; box-sizing: border-box;">
+            <!-- Tambahkan autocomplete="new-password" pada input sandi ini -->
+            <input id="profile-password" name="newPassword" type="password" autocomplete="new-password" minlength="6" placeholder="Minimal 6 karakter" style="width: 100%; padding-right: 40px; box-sizing: border-box;">
             <button type="button" tabindex="-1" onclick="
               const pwd = document.getElementById('profile-password');
               if (pwd.type === 'password') { 
@@ -3282,34 +3508,28 @@ async function onClick(event) {
       }
       return;
     case 'forgot-password': return resetPasswordHandler();
-    case 'show-profile-popup': return showProfilePopup(); // <-- TAMBAHKAN BARIS INI
+    case 'show-profile-popup': return showProfilePopup();
     case 'generator': return renderGenerator(data.type);
-	
     case 'logout': return logout();
     case 'navigate': return navigate(data.route, data.category);
     case 'theme': return toggleTheme();
-
-
-case 'toggle-menu':
+    case 'toggle-menu':
       if (document.body.classList.contains('menu-open')) {
-        history.back(); // Memanfaatkan tombol kembali sistem untuk menutup
+        history.back(); 
       } else {
-        history.pushState({ menu: 'open' }, ''); // Merekam bahwa menu sedang terbuka
+        history.pushState({ menu: 'open' }, ''); 
         document.body.classList.add('menu-open'); 
       }
       return;
-      
     case 'close-menu': 
       if (document.body.classList.contains('menu-open')) {
-         history.back(); // Menutup menu saat area gelap (backdrop) diketuk
+         history.back(); 
       }
       return;
-
-
     case 'open-document': return openDocument(data.id);
     case 'export': return exportDocument(data.format);
     case 'copy': return copyDocument();
-    case 'refine-selected': return refineSelectedText(); // <-- TAMBAHKAN INI
+    case 'refine-selected': return refineSelectedText();
     case 'favorite-document': return mutateDocument('favoriteDocument', data.id, data.value === 'true');
     case 'trash-document': return mutateDocument('trashDocument', data.id, data.value === 'true');
     case 'refresh-documents': return navigate(state.route);
@@ -3318,13 +3538,60 @@ case 'toggle-menu':
     case 'new-user': return renderUsers();
     case 'test-provider': return testProvider(data.id);
     case 'use-as-reference': 
-      state.tempReference = document.querySelector('#editor-text').value;
-      showToast('Isi dokumen disimpan ke memori AI. Silakan pilih jenis dokumen selanjutnya.');
+      const rawText = document.querySelector('#editor-text').value;
+      const docTitleInput = document.querySelector('input[name="title"]')?.value || state.editor?.doc?.title || '';
+      state.tempReference = rawText;
+      
+      const cleanVal = (val) => val ? val.replace(/^\**|\**$/g, '').trim() : '';
+
+      // 1. Deteksi Mata Pelajaran
+      const matchSubject = rawText.match(/(?:Mata Pelajaran|Mapel)\s*\**\s*:\s*\**\s*([^\n\*]+)/i);
+      state.tempSubject = matchSubject ? cleanVal(matchSubject[1]) : '';
+
+      // 2. Deteksi Kelas / Fase
+      const matchLevel = rawText.match(/(?:Fase\s*\/\s*Kelas|Kelas\s*\/\s*Fase|Kelas|Fase)[^\:\n]*:\s*\**\s*([^\n\*]+)/i);
+      state.tempLevel = matchLevel ? cleanVal(matchLevel[1]) : '';
+
+      // 3. Deteksi Topik / Materi / Bab / Tema (Prioritas isi teks -> fallback ke Judul Dokumen)
+      const matchTopic = rawText.match(/(?:Topik|Materi(?: Pokok| Pembelajaran)?|Bab\s*\/\s*Tema|Tema\s*\/\s*Topik|Bab|Tema|Submateri)\s*\**\s*:\s*\**\s*([^\n\*]+)/i);
+      let extractedTopic = matchTopic ? cleanVal(matchTopic[1]) : '';
+      if (!extractedTopic && docTitleInput.includes(' - ')) {
+        extractedTopic = docTitleInput.split(' - ').slice(1).join(' - ').trim();
+      }
+      state.tempTopic = extractedTopic;
+
+      // 4. Deteksi Alokasi Waktu
+      const matchDuration = rawText.match(/(?:Alokasi Waktu|Waktu|Durasi)\s*\**\s*:\s*\**\s*([^\n\*]+)/i);
+      state.tempDuration = matchDuration ? cleanVal(matchDuration[1]) : '';
+
+      // 5. Deteksi Tahun Ajaran / Tahun Penyusunan
+      const matchYear = rawText.match(/(?:Tahun Ajaran|Tahun Pelajaran|Tahun Penyusunan|Tahun)\s*\**\s*:\s*\**\s*([^\n\*]+)/i);
+      state.tempYear = matchYear ? cleanVal(matchYear[1]) : '';
+
+      // 6. Deteksi Semester (Ganjil / Genap)
+      const matchSem = rawText.match(/Semester\s*\**\s*:\s*\**\s*([^\n\*]+)/i);
+      if (matchSem) {
+        const semStr = matchSem[1].toLowerCase();
+        if (semStr.includes('ganjil') || /\bi\b|1|satu/.test(semStr)) state.tempSemester = 'Ganjil';
+        else if (semStr.includes('genap') || /\bii\b|2|dua/.test(semStr)) state.tempSemester = 'Genap';
+      } else {
+        state.tempSemester = '';
+      }
+
+      // 7. Deteksi Kurikulum
+      if (/kurikulum merdeka/i.test(rawText)) state.tempCurriculum = 'Kurikulum Merdeka';
+      else if (/kurikulum 2013|k-?13/i.test(rawText)) state.tempCurriculum = 'Kurikulum 2013';
+      else state.tempCurriculum = '';
+
+      // 8. Deteksi Jumlah Soal (jika ada, atau default 10 di generator soal)
+      const matchSoal = rawText.match(/Jumlah Soal\s*\**\s*:\s*\**\s*(\d+)/i) || rawText.match(/(\d+)\s*(?:butir\s*)?soal/i);
+      state.tempJumlahSoal = matchSoal ? matchSoal[1] : '10';
+
+      showToast('Konteks dokumen (Mapel, Kelas, Materi, dan Rujukan) berhasil dideteksi ke memori AI.');
       return navigate('dashboard');
     default: return;
   }
 }
-
 function onSubmit(event) {
   const form = event.target.closest('[data-form]');
   if (!form) return;
