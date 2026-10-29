@@ -1192,17 +1192,20 @@ function renderDashboard() {
       <h1>Selamat berkarya, ${escapeHTML(state.user.name)}.</h1>
       <p>Mulai dari perencanaan hingga refleksi. Buat draf perangkat ajar, sesuaikan isinya, lalu simpan dalam satu ruang kerja.</p>
       
-      <!-- TOMBOL BUAT DOKUMEN & TOP-UP DISEJAJARKAN DI SINI -->
+     <!-- TOMBOL BUAT DOKUMEN & TOP-UP DISEJAJARKAN DI SINI -->
       <div class="row" style="display: flex; gap: 10px; width: 100%; align-items: center;">
         <button type="button" class="btn btn-primary" data-action="navigate" data-route="category" data-category="perencanaan" style="flex: 1; justify-content: center; white-space: nowrap; padding: 12px 14px; font-size: 0.9rem;">
           ✦ Buat dokumen baru
         </button>
         
-        <a href="https://wa.me/6287846666636?text=Halo%20Admin%20EduPlan%20AI,%20saya%20ingin%20top-up%20saldo%20token%20untuk%20akun:%20${state.user.email}" target="_blank" style="flex: 1; background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4); padding: 12px 14px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; display: inline-flex; justify-content: center; align-items: center; gap: 6px; backdrop-filter: blur(5px); white-space: nowrap;" title="Top-Up Saldo Token">
+        <!-- Tombol Pilihan Top-Up (Memanggil fungsi showTopUpOptions) -->
+        <button type="button" onclick="showTopUpOptions('${state.user.email}')" style="flex: 1; background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.4); padding: 12px 14px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; text-decoration: none; display: inline-flex; justify-content: center; align-items: center; gap: 6px; backdrop-filter: blur(5px); white-space: nowrap; cursor: pointer;" title="Pilih Paket Top-Up Token">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg> 
           Top-Up Saldo
-        </a>
+        </button>
       </div>
+	 
+	 
     </section>
     
     <!-- KARTU STATISTIK KEMBALI BERSIH 2x2 TANPA TOMBOL MENUTUPI TEKS -->
@@ -1222,6 +1225,142 @@ function renderDashboard() {
   // Panggil fungsi untuk mengambil data pengguna secara realtime
   fetchDashboardUserCount();
 }
+
+
+
+// --- FUNGSI BARU: Menampilkan Pilihan Paket Top-Up (Desain Modern) ---
+window.showTopUpOptions = async function(userEmail) {
+  const adminWhatsApp = '6287846666636'; // Ganti dengan nomor WhatsApp Admin
+
+  const { value: selectedPackage } = await Swal.fire({
+    title: 'Pilih Paket Top-Up',
+    width: '460px',
+    html: `
+      <style>
+        .pkg-label {
+          display: block; position: relative; margin-bottom: 12px; cursor: pointer;
+          user-select: none; -webkit-tap-highlight-color: transparent;
+        }
+        .pkg-input {
+          position: absolute; opacity: 0; cursor: pointer; height: 0; width: 0;
+        }
+        .pkg-card {
+          display: flex; justify-content: space-between; align-items: center;
+          padding: 16px; border: 2px solid #e2e8f0; border-radius: 12px;
+          background: #fff; transition: all 0.25s ease;
+        }
+        .pkg-label:hover .pkg-card {
+          border-color: #cbd5e1; background: #f8fafc;
+        }
+        .pkg-input:checked ~ .pkg-card {
+          border-color: #10b981; background: #ecfdf5;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+        .pkg-title { font-weight: 700; color: #1e293b; font-size: 1.05rem; margin-bottom: 4px; text-align: left; }
+        .pkg-desc { font-size: 0.85rem; color: #64748b; text-align: left; display: flex; align-items: center; gap: 4px;}
+        .pkg-price { font-weight: 800; color: #1e293b; font-size: 1.1rem; text-align: right; }
+        .pkg-input:checked ~ .pkg-card .pkg-price { color: #10b981; }
+        .pkg-popular {
+          position: absolute; top: -10px; right: 20px; background: #f59e0b;
+          color: #fff; font-size: 0.7rem; font-weight: 800; padding: 3px 10px;
+          border-radius: 99px; letter-spacing: 0.5px; z-index: 2;
+          box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+        }
+        .pkg-check {
+           width: 24px; height: 24px; border-radius: 50%; border: 2px solid #cbd5e1;
+           display: flex; align-items: center; justify-content: center;
+           transition: all 0.2s ease; flex-shrink: 0; background: #fff;
+        }
+        .pkg-input:checked ~ .pkg-card .pkg-check {
+           border-color: #10b981; background: #10b981;
+        }
+        .pkg-input:checked ~ .pkg-card .pkg-check::after {
+           content: ''; width: 6px; height: 10px; border: solid white;
+           border-width: 0 2px 2px 0; transform: rotate(45deg); margin-top: -2px;
+        }
+      </style>
+
+      <div style="margin-top: 10px;">
+        <!-- PAKET BASIC -->
+        <label class="pkg-label">
+          <input type="radio" name="topup-package" value="Basic (50.000 Token) - Rp 25.000" class="pkg-input">
+          <div class="pkg-card">
+             <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="pkg-check"></div>
+                <div>
+                   <div class="pkg-title">Paket Basic</div>
+                   <div class="pkg-desc">50.000 Token</div>
+                </div>
+             </div>
+             <div class="pkg-price">Rp 25.000</div>
+          </div>
+        </label>
+
+        <!-- PAKET STANDARD (DEFAULT CHECKED) -->
+        <label class="pkg-label">
+          <input type="radio" name="topup-package" value="Standard (150.000 Token) - Rp 50.000" class="pkg-input" checked>
+          <div class="pkg-popular">TERLARIS</div>
+          <div class="pkg-card">
+             <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="pkg-check"></div>
+                <div>
+                   <div class="pkg-title">Paket Standard</div>
+                   <div class="pkg-desc">
+                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                     150.000 Token
+                   </div>
+                </div>
+             </div>
+             <div class="pkg-price">Rp 50.000</div>
+          </div>
+        </label>
+
+        <!-- PAKET PRO -->
+        <label class="pkg-label">
+          <input type="radio" name="topup-package" value="Pro (400.000 Token) - Rp 100.000" class="pkg-input">
+          <div class="pkg-card">
+             <div style="display: flex; align-items: center; gap: 14px;">
+                <div class="pkg-check"></div>
+                <div>
+                   <div class="pkg-title">Paket Pro</div>
+                   <div class="pkg-desc">400.000 Token</div>
+                </div>
+             </div>
+             <div class="pkg-price">Rp 100.000</div>
+          </div>
+        </label>
+      </div>
+      
+      <div style="font-size: 0.85rem; color: #64748b; margin-top: 20px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+        Pemesanan akan dilanjutkan ke WhatsApp Admin
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Lanjutkan ke WhatsApp',
+    cancelButtonText: 'Batal',
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#94a3b8',
+    reverseButtons: true,
+    customClass: {
+      confirmButton: 'btn-primary',
+      popup: 'modern-popup'
+    },
+    preConfirm: () => {
+      const selected = document.querySelector('input[name="topup-package"]:checked');
+      if (!selected) {
+        Swal.showValidationMessage('Silakan pilih salah satu paket Top-Up');
+      }
+      return selected ? selected.value : null;
+    }
+  });
+
+  if (selectedPackage) {
+    const textMessage = `Halo Admin EduPlan AI,\n\nSaya ingin memesan paket Top-Up:\n*${selectedPackage}*\n\nUntuk akun:\n*${userEmail}*\n\nMohon informasi pembayarannya. Terima kasih.`;
+    const waUrl = `https://wa.me/${adminWhatsApp}?text=${encodeURIComponent(textMessage)}`;
+    window.open(waUrl, '_blank');
+  }
+};
 
 // Fungsi baru untuk mengambil total pengguna di Dashboard
 // Fungsi baru untuk mengambil total pengguna di Dashboard
