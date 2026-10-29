@@ -1561,11 +1561,11 @@ async function exportDocument(format) {
     const finalLogo = format === 'pdf' ? logoBase64 : logoUrl;
 	
     // Pengambilan data profil secara dinamis
-    const schoolName = escapeHTML(state.user.school || 'TK - RA DARUSSALAM'); 
+    const schoolName = escapeHTML(state.user.school || 'EDUPLAN AI'); 
     const schoolRegion = escapeHTML(state.user.region || 'PEMERINTAH PROVINSI / KABUPATEN'); 
     const schoolAddress = escapeHTML(state.user.address || 'Jalan Pendidikan No. 7, Bangkalan, Madura 69155');
     const schoolPhone = escapeHTML(state.user.phone || '087846666636');
-    const userEmail = escapeHTML(state.user.email || 'arom@gmail.com');
+    const userEmail = escapeHTML(state.user.email || 'admin@eduplanai.com');
 
     // Deklarasi tunggal kopSurat
     const kopSurat = `
