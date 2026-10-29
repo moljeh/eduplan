@@ -1032,8 +1032,8 @@ function renderShell() {
             MEMUAT...
           </span>
 
-          <!-- PROFIL USER -->
-          <div class="user-chip" style="margin-left: 0;">
+         <!-- PROFIL USER -->
+          <div class="user-chip" data-action="show-profile-popup" style="margin-left: 0; cursor: pointer;" title="Lihat Profil">
             ${renderRoleAvatar(user.role)}
             <div class="user-label"><span>${escapeHTML(user.name)}</span><small>${user.role === 'admin' ? 'Administrator' : 'Guru'}</small></div>
           </div>
@@ -1125,8 +1125,11 @@ async function mayLeave() {
   return accepted;
 }
 
-async function navigate(route, category = '') {
+async function navigate(route, category = '', isBack = false) {
   if (!(await mayLeave())) return;
+  
+  if (!isBack) history.pushState({ action: 'navigate', route: route, category: category }, '');
+  
   if (route === 'dashboard') {
     await run(async () => { applyBoot(await api('boot')); }, 'Menyinkronkan data...');
     return renderDashboard();
@@ -1151,7 +1154,6 @@ async function navigate(route, category = '') {
     }, 'Memuat data admin...');
   }
 }
-
 function pageHead(heading, description) {
   return `<div class="page-head"><h1>${escapeHTML(heading)}</h1><p>${escapeHTML(description)}</p></div>`;
 }
@@ -1474,8 +1476,11 @@ function getFormConfig(type, providers) {
   return { formGrid: baseFields + grid + providerField, textareas: textareas };
 }
 
-async function renderGenerator(type) {
+async function renderGenerator(type, isBack = false) {
   if (!(await mayLeave())) return;
+  
+  if (!isBack) history.pushState({ action: 'generator', type: type }, '');
+  
   state.generatorType = type;
   setRoute('generator', `Generator / ${title(type)}`);
   
@@ -1631,8 +1636,11 @@ async function generate(form) {
  * Deskripsi: Layar untuk menyunting hasil teks AI, fungsi penyimpanan, 
  *            serta mesin utama untuk mencetak PDF dan Word resmi.
  * ========================================================================== */
-async function openDocument(id) {
+async function openDocument(id, isBack = false) {
   if (!(await mayLeave())) return;
+  
+  if (!isBack) history.pushState({ action: 'editor', id: id }, '');
+  
   await run(async () => {
     state.editor = await api('readDocument', {id});
     state.dirty = false;
@@ -1800,7 +1808,6 @@ async function exportDocument(format) {
                 Mengetahui,<br>
                 Kepala Sekolah
                 <div style="height: 70px;"></div>
-                <!-- Tabel kecil untuk mengunci lebar garis dan NIP (Kepala Sekolah) -->
                 <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 0 auto;">
                   <tr>
                     <td style="border-bottom: 1pt solid black; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px;">
@@ -1808,9 +1815,8 @@ async function exportDocument(format) {
                     </td>
                   </tr>
                   <tr>
-                    <!-- Penyesuaian: padding-top ditambah menjadi 8px, titik-titik disesuaikan lebarnya -->
-                    <td style="text-align: left; padding-top: 8px; font-size: 12pt; font-family: 'Times New Roman', Times, serif;">
-                      NIP. ..............................................................
+                    <td style="text-align: left; padding-top: 6px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; white-space: nowrap; vertical-align: bottom;">
+                      NIP.
                     </td>
                   </tr>
                 </table>
@@ -1819,7 +1825,6 @@ async function exportDocument(format) {
                 Bangkalan, ..............................<br>
                 Guru Mata Pelajaran
                 <div style="height: 70px;"></div>
-                <!-- Tabel kecil untuk mengunci lebar garis dan NIP (Guru) -->
                 <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 0 auto;">
                   <tr>
                     <td style="border-bottom: 1pt solid black; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px;">
@@ -1827,9 +1832,8 @@ async function exportDocument(format) {
                     </td>
                   </tr>
                   <tr>
-                    <!-- Penyesuaian: padding-top ditambah menjadi 8px, titik-titik disesuaikan lebarnya -->
-                    <td style="text-align: left; padding-top: 8px; font-size: 12pt; font-family: 'Times New Roman', Times, serif;">
-                      NIP. ..............................................................
+                    <td style="text-align: left; padding-top: 6px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; white-space: nowrap; vertical-align: bottom;">
+                      NIP.
                     </td>
                   </tr>
                 </table>
@@ -2731,18 +2735,18 @@ async function onClick(event) {
         target.innerHTML = isHidden ? iconEyeOff : iconEye;
       }
       return;
-case 'forgot-password': return resetPasswordHandler();
+    case 'forgot-password': return resetPasswordHandler();
+    case 'show-profile-popup': return showProfilePopup(); // <-- TAMBAHKAN BARIS INI
     case 'generator': return renderGenerator(data.type);
+	
     case 'logout': return logout();
     case 'navigate': return navigate(data.route, data.category);
     case 'theme': return toggleTheme();
-    case 'toggle-menu':
-      if (document.body.classList.contains('menu-open')) {
-        history.back(); 
-      } else {
-        history.pushState({ menu: 'open' }, '');
-        document.body.classList.add('menu-open'); 
-      }
+case 'toggle-menu':
+      document.body.classList.toggle('menu-open'); 
+      return;
+    case 'close-menu': 
+      document.body.classList.remove('menu-open'); 
       return;
     case 'close-menu': 
       if (document.body.classList.contains('menu-open')) history.back(); 
@@ -2849,9 +2853,27 @@ function toggleTheme() {
 
 async function init() {
   document.documentElement.dataset.theme = localStorage.getItem(CONFIG.THEME_KEY) || 'light';
-  window.addEventListener('popstate', () => {
-    if (document.body.classList.contains('menu-open')) document.body.classList.remove('menu-open');
+  
+  window.addEventListener('popstate', (event) => {
+    if (document.body.classList.contains('menu-open')) {
+      document.body.classList.remove('menu-open');
+      return;
+    }
+    if (typeof Swal !== 'undefined' && Swal.isVisible()) {
+      Swal.close();
+      return;
+    }
+    
+    const s = event.state;
+    if (s) {
+      if (s.action === 'generator') renderGenerator(s.type, true);
+      else if (s.action === 'editor') openDocument(s.id, true);
+      else if (s.action === 'navigate') navigate(s.route, s.category || '', true);
+    } else if (state.token) {
+      navigate('dashboard', '', true);
+    }
   });
+
   document.addEventListener('click', onClick);
   document.addEventListener('submit', onSubmit);
   document.addEventListener('input', onInput);
@@ -2861,11 +2883,15 @@ async function init() {
     if (!state.dirty) return;
     event.preventDefault(); event.returnValue = '';
   });
+  
   renderLogin();
   if (!state.token) return;
+  
   await run(async () => {
     applyBoot(await api('boot'));
-    renderShell(); renderDashboard();
+    renderShell(); 
+    history.replaceState({ action: 'navigate', route: 'dashboard', category: '' }, '');
+    renderDashboard();
   }, 'Memulihkan sesi...');
 }
 
@@ -2887,6 +2913,80 @@ async function resetPasswordHandler() {
       Swal.fire('Terkirim!', 'Tautan reset sandi telah dikirim. Silakan cek kotak masuk atau folder spam email Anda.', 'success');
     }, 'Mengirim email pemulihan...');
   }
+}
+
+
+function showProfilePopup() {
+  const user = state.user;
+  const roleText = user.role === 'admin' ? 'Administrator' : 'Guru';
+  
+  // Mencegah HP keluar dari aplikasi saat tombol 'back' ditekan
+  history.pushState({ popup: 'profile' }, '');
+  const closeOnBack = () => Swal.close();
+  window.addEventListener('popstate', closeOnBack);
+  
+  Swal.fire({
+    title: false,
+    html: `
+      <style>
+        /* Memperbaiki bentrok CSS global agar tombol X menjadi kecil dan proporsional */
+        .swal2-close {
+          min-height: auto !important;
+          width: 32px !important;
+          height: 32px !important;
+          padding: 0 !important;
+          border: none !important;
+          border-radius: 50% !important;
+          background: transparent !important;
+          color: #94a3b8 !important;
+          font-size: 24px !important;
+          line-height: 1 !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          margin: 10px 10px 0 0 !important;
+        }
+        .swal2-close:hover {
+          background: #f1f5f9 !important;
+          color: #1e293b !important;
+        }
+      </style>
+      <div style="display: flex; flex-direction: column; align-items: center; padding: 10px 0;">
+        <div style="transform: scale(1.6); margin-bottom: 28px; pointer-events: none;">
+          ${renderRoleAvatar(user.role)}
+        </div>
+        <h3 style="margin: 0 0 6px 0; font-size: 1.3rem; font-weight: 800; color: #1e293b;">${escapeHTML(user.name)}</h3>
+        <div style="font-size: 0.9rem; color: #64748b; margin-bottom: 16px;">${escapeHTML(user.email)}</div>
+        
+        <span style="background: ${user.role === 'admin' ? '#e0e7ff' : '#f3f4f6'}; color: ${user.role === 'admin' ? '#4f46e5' : '#4b5563'}; padding: 4px 16px; border-radius: 99px; font-size: 0.75rem; font-weight: bold; letter-spacing: 0.5px; text-transform: uppercase;">
+          ${roleText}
+        </span>
+        
+        <div style="width: 100%; height: 1px; background: #e2e8f0; margin: 24px 0 20px 0;"></div>
+        
+        <button type="button" class="btn btn-outline full" onclick="Swal.close(); setTimeout(() => document.querySelector('[data-action=\\'navigate\\'][data-route=\\'profile\\']').click(), 150);" style="justify-content: center; font-size: 0.9rem; padding: 12px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          Pengaturan Profil
+        </button>
+      </div>
+    `,
+    showConfirmButton: false,
+    showCloseButton: true,
+    width: '320px',
+    padding: '10px 20px 20px',
+    customClass: {
+      popup: 'modern-popup'
+    },
+    willClose: () => {
+      // Hapus event listener saat popup ditutup
+      window.removeEventListener('popstate', closeOnBack);
+      
+      // Jika popup ditutup manual (klik X atau luar area), sesuaikan kembali history-nya
+      if (history.state && history.state.popup === 'profile') {
+        history.back();
+      }
+    }
+  });
 }
 
 init();
