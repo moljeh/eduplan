@@ -420,66 +420,58 @@ async function run(task, message) {
 
 function formValues(form) { return Object.fromEntries(new FormData(form).entries()); }
 
+
+
 /* ==========================================================================
  * F16 | api (KONEKSI SERVER / DATABASE)
- * Deskripsi: Satu-satunya gerbang komunikasi antara aplikasi (Frontend) 
- *            dengan Firebase Firestore dan Server Gemini AI.
  * ========================================================================== */
 async function api(action, params = {}) {
   try {
     switch (action) {
-		
-		
-		case 'resetPassword':
+      case 'resetPassword':
         await sendPasswordResetEmail(auth, params.email);
         return true;
       
-	case 'register':
-        // 1. Buat akun di sistem autentikasi Firebase (mengamankan password)
+      case 'register':
         const userCredential = await createUserWithEmailAndPassword(auth, params.email, params.password);
         const newUser = userCredential.user;
         
-        // --- CEK PENGATURAN BONUS DARI ADMIN ---
         const settingsSnapReg = await getDoc(doc(db, "Settings", "global"));
-        let initialToken = 0; // Default awal adalah 0
+        let initialToken = 0;
         if (settingsSnapReg.exists()) {
           const s = settingsSnapReg.data();
-          // Jika tombol On, ambil angka bonusnya
           if (s.bonusEnabled) initialToken = Number(s.bonusAmount) || 0;
         }
         
-        // 2. Simpan profil lengkapnya ke Firestore Database
         const registerData = { 
           email: params.email, 
           name: params.name, 
           school: params.school, 
           whatsapp: params.whatsapp,
-          role: 'guru', // Default pendaftar baru adalah guru
-          active: true, // Atau false jika butuh persetujuan admin dulu
-          tokenBalance: initialToken, // <--- Otomatis terisi sesuai pengaturan admin
+          role: 'guru', 
+          active: true, 
+          tokenBalance: initialToken, 
           dailyQuota: 10
         };
         await setDoc(doc(db, "Users", params.email), registerData);
        return { token: params.email, user: registerData };
 
       case 'login':
-        // 1. Verifikasi email dan password ke Firebase Auth
         const loginCredential = await signInWithEmailAndPassword(auth, params.email, params.password);
         
-        // 2. Ambil data profilnya dari Firestore
         const userRefLogin = doc(db, "Users", params.email);
         const userSnapLogin = await getDoc(userRefLogin);
         
-        if (!userSnapLogin.exists()) throw new Error("Profil pengguna tidak ditemukan di database.");
+        if (!userSnapLogin.exists()) throw new Error("Profil pengguna tidak ditemukan di dalam sistem.");
         const userData = userSnapLogin.data();
-        if (userData.active === false) throw new Error("Akun ini belum diaktifkan atau dinonaktifkan admin.");
+        if (userData.active === false) throw new Error("Akun Anda sedang dinonaktifkan. Silakan hubungi Administrator.");
         
        return { token: params.email, user: userData };
 
       case 'boot':
         const userRef = doc(db, "Users", state.token);
         const userSnap = await getDoc(userRef);
-        if (!userSnap.exists()) throw new Error("Sesi tidak valid. Silakan login ulang.");
+        if (!userSnap.exists()) throw new Error("Sesi login Anda sudah berakhir. Silakan masuk ulang.");
         const bootUserData = userSnap.data();
 
         const provQ = query(collection(db, "Providers"), where("enabled", "==", true));
@@ -528,8 +520,7 @@ async function api(action, params = {}) {
             icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`, 
             items: ['bahan_bacaan', 'skenario_video', 'naskah_podcast', 'slide_presentasi', 'ide_games', 'flashcard', 'poster_edukasi', 'teks_pidato', 'teks_puisi', 'cerita_pendek', 'skenario_roleplay'] 
           },
-		  
-		  refleksi: { 
+          refleksi: { 
             title: 'Refleksi & Pengembangan', 
             icon: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>`, 
             items: ['refleksi_pembelajaran', 'jurnal_evaluasi', 'catatan_tindak_lanjut', 'laporan_pengembangan'] 
@@ -557,10 +548,8 @@ async function api(action, params = {}) {
         });
 
        const settingsSnapAdmin = await getDoc(doc(db, "Settings", "global"));
-       // --- TAMBAHAN: Ambil data bonusEnabled dan bonusAmount ---
        const adminSettings = settingsSnapAdmin.exists() ? settingsSnapAdmin.data() : { dailyLimit: 10, bonusEnabled: false, bonusAmount: 0 };
 
-        // Ambil data log dari Firebase Firestore
         const logsSnap = await getDocs(collection(db, "Logs"));
         const logsList = logsSnap.docs.map(d => d.data()).sort((a, b) => b.created - a.created).slice(0, 200);
 
@@ -583,7 +572,7 @@ async function api(action, params = {}) {
         const testProvRef = doc(db, "Providers", params.id);
         const testProvSnap = await getDoc(testProvRef);
         if (!testProvSnap.exists() || !testProvSnap.data().key) {
-          throw new Error("API Key belum dikonfigurasi atau tidak ditemukan.");
+          throw new Error("Konfigurasi layanan belum lengkap. Silakan hubungi Administrator.");
         }
         const apiKey = testProvSnap.data().key;
         const modelName = testProvSnap.data().model || 'gemini-3.8-flash';
@@ -594,21 +583,21 @@ async function api(action, params = {}) {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              contents: [{ parts: [{ text: "Halo, balas dengan kalimat singkat: 'Koneksi ke Gemini berhasil!' jika kamu menerima pesan ini." }] }]
+              contents: [{ parts: [{ text: "Halo, balas dengan kalimat singkat: 'Koneksi ke sistem AI berhasil!' jika kamu menerima pesan ini." }] }]
             })
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error?.message || "Gagal menghubungi server Gemini.");
+          if (!response.ok) throw new Error("Gagal terhubung ke layanan cerdas. Silakan coba lagi.");
           return { text: data.candidates[0].content.parts[0].text };
         } else {
-          throw new Error(`Tes koneksi untuk provider ${params.id} belum tersedia di versi ini.`);
+          throw new Error(`Pengujian layanan ini belum tersedia di sistem.`);
         }
 		
-case 'generate':
+      case 'generate':
         const genProvRef = doc(db, "Providers", params.provider || 'gemini');
         const genProvSnap = await getDoc(genProvRef);
         if (!genProvSnap.exists() || !genProvSnap.data().key) {
-          throw new Error(`API Key untuk ${params.provider || 'gemini'} belum dikonfigurasi.`);
+          throw new Error(`Sistem AI belum siap digunakan. Silakan hubungi Administrator.`);
         }
         const apiKeyGen = genProvSnap.data().key;
         const modelNameGen = genProvSnap.data().model || (params.provider === 'openai' ? 'gpt-4o' : params.provider === 'claude' ? 'claude-3-5-sonnet-20241022' : 'gemini-3.8-flash');
@@ -624,7 +613,6 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
         let generatedText = "";
         const activeProvider = params.provider || 'gemini';
 
-        // 1. JIKA PROVIDER GEMINI
         if (activeProvider === 'gemini') {
           const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelNameGen}:generateContent?key=${apiKeyGen}`;
           const response = await fetch(endpoint, {
@@ -633,11 +621,10 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
             body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error?.message || "Gagal membuat dokumen dari server Gemini.");
+          if (!response.ok) throw new Error("Sistem gagal merespons. Silakan coba beberapa saat lagi.");
           generatedText = data.candidates[0].content.parts[0].text;
         } 
         
-        // 2. JIKA PROVIDER OPENAI (GPT)
         else if (activeProvider === 'openai') {
           const endpoint = 'https://api.openai.com/v1/chat/completions';
           const response = await fetch(endpoint, {
@@ -653,11 +640,10 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
             })
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error?.message || "Gagal membuat dokumen dari server OpenAI.");
+          if (!response.ok) throw new Error("Sistem gagal merespons. Silakan coba beberapa saat lagi.");
           generatedText = data.choices[0].message.content;
         } 
         
-        // 3. JIKA PROVIDER CLAUDE (ANTHROPIC)
         else if (activeProvider === 'claude') {
           const endpoint = 'https://api.anthropic.com/v1/messages';
           const response = await fetch(endpoint, {
@@ -666,7 +652,7 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
               'Content-Type': 'application/json',
               'x-api-key': apiKeyGen,
               'anthropic-version': '2023-06-01',
-              'anthropic-dangerous-direct-browser-access': 'true' // Diperlukan agar fetch langsung dari browser PWA
+              'anthropic-dangerous-direct-browser-access': 'true'
             },
             body: JSON.stringify({
               model: modelNameGen,
@@ -675,12 +661,12 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
             })
           });
           const data = await response.json();
-          if (!response.ok) throw new Error(data.error?.message?.message || "Gagal membuat dokumen dari server Claude.");
+          if (!response.ok) throw new Error("Sistem gagal merespons. Silakan coba beberapa saat lagi.");
           generatedText = data.content[0].text;
         } 
         
         else {
-          throw new Error(`Provider ${activeProvider} tidak dikenali.`);
+          throw new Error(`Sistem pengolah ini tidak dikenali.`);
         }
 
         const newDocRef = doc(collection(db, "Documents"));
@@ -728,7 +714,7 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
       case 'readDocument':
         const readRef = doc(db, "Documents", params.id);
         const readSnap = await getDoc(readRef);
-        if (!readSnap.exists()) throw new Error("Dokumen tidak ditemukan di database.");
+        if (!readSnap.exists()) throw new Error("Dokumen tidak ditemukan di dalam sistem.");
         const readData = readSnap.data();
         return {
           doc: { id: readData.id, title: readData.title, type: readData.type, provider: readData.provider, owner: readData.owner, updated: readData.updated, revision: readData.revision, deleted: readData.deleted, favorite: readData.favorite },
@@ -747,14 +733,15 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
         const favSnap = await getDoc(favRef);
         return favSnap.data();
 
-  case 'updateProfile':
-        // 1. Simpan nama dan instansi ke database
+case 'updateProfile':
         await updateDoc(doc(db, "Users", params.email), {
           name: params.name,
-          school: params.school
+          school: params.school,
+          region: params.region, // <--- Menyimpan wilayah/kabupaten mandiri
+          address: params.address,
+          phone: params.phone
         });
         
-        // 2. Ganti kata sandi di sistem keamanan jika kolom diisi
         if (params.newPassword && params.newPassword.trim() !== '') {
           await updatePassword(auth.currentUser, params.newPassword);
         }
@@ -768,14 +755,12 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
 
       case 'saveSettings':
         const settingsRef = doc(db, "Settings", "global");
-        // --- TAMBAHAN: Simpan nilai bonus ke Firebase ---
         await setDoc(settingsRef, { 
           dailyLimit: Number(params.dailyLimit),
           bonusEnabled: params.bonusEnabled,
           bonusAmount: Number(params.bonusAmount)
         }, { merge: true });
         return true;
-		
 
      case 'logActivity':
         const logRef = doc(collection(db, "Logs"));
@@ -792,12 +777,14 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
         return true;
 
       default:
-        throw new Error(`Tindakan ${action} belum terhubung ke Firebase.`);
+        throw new Error("Tindakan tidak dapat diproses oleh sistem saat ini.");
     }
   } catch (error) {
     throw error;
   }
 }
+
+
 
 /* ==========================================================================
  * KELOMPOK AUTENTIKASI & SESI (F17 - F21)
@@ -1554,13 +1541,9 @@ async function exportDocument(format) {
       return;
     }
 
-    // 1. SOLUSI LOGO: Word memblokir Base64 (silang merah), jadi khusus MS Word kita gunakan URL Asli.
-    // Catatan: Jika dibuka di localhost tanpa koneksi internet, logo di Word tetap tidak muncul 
-    // sampai aplikasi ini di-hosting secara online (seperti di GitHub Pages).
     const logoUrl = window.location.origin + '/asset/logo.png';
     let logoBase64 = logoUrl; 
     
-    // Hanya gunakan Base64 untuk cetak PDF agar aman di HP
     if (format === 'pdf') {
       try {
         const response = await fetch(logoUrl);
@@ -1576,8 +1559,36 @@ async function exportDocument(format) {
     }
 
     const finalLogo = format === 'pdf' ? logoBase64 : logoUrl;
+	
+    // Pengambilan data profil secara dinamis
     const schoolName = escapeHTML(state.user.school || 'TK - RA DARUSSALAM'); 
-    const userEmail = escapeHTML(state.user.email || 'aromwebapp@gmail.com');
+    const schoolRegion = escapeHTML(state.user.region || 'PEMERINTAH PROVINSI / KABUPATEN'); 
+    const schoolAddress = escapeHTML(state.user.address || 'Jalan Pendidikan No. 7, Bangkalan, Madura 69155');
+    const schoolPhone = escapeHTML(state.user.phone || '087846666636');
+    const userEmail = escapeHTML(state.user.email || 'arom@gmail.com');
+
+    // Deklarasi tunggal kopSurat
+    const kopSurat = `
+      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; margin-bottom: 0px; border-collapse: collapse; border: none;">
+        <tr>
+          <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none;">
+            <img src="${finalLogo}" width="90" height="90" alt="Logo" style="width: 90px; height: 90px; display: block; margin: 0 auto;">
+          </td>
+          <td width="85%" style="width: 85%; text-align: center; vertical-align: middle; border: none; line-height: 1.2;">
+            <div style="font-size: 16pt; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-transform: uppercase;">${schoolRegion}<br>${schoolName}</div>
+            <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; margin-top: 4px;">Alamat : ${schoolAddress}<br>Kontak : ${schoolPhone}, E-mail : ${userEmail}</div>
+          </td>
+        </tr>
+      </table>
+      
+      <div style="border-bottom: 3pt solid black; margin-top: 10px; margin-bottom: 2px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
+      <div style="border-bottom: 1pt solid black; margin-bottom: 20px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
+      
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="margin: 0 0 5px 0; font-size: 14pt; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; font-weight: bold;">${escapeHTML(docTitle)}</h2>
+        <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; color: #555; text-transform: uppercase;">DRAF UNTUK DITINJAU GURU</div>
+      </div>
+    `;
 
     const rows = rawText.split('\n');
     let htmlRows = [];
@@ -1603,7 +1614,6 @@ async function exportDocument(format) {
       if (tRow.match(/^Mengetahui,?/i)) {
         skipSignatureLines = true;
         forcePageBreak = true; 
-        // Perbaikan Tabel TTD: border="0" agar Word tidak memunculkan garis putus-putus
         htmlRows.push(`
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border: none; margin-top: 30px; margin-bottom: 20px; border-collapse: collapse; page-break-inside: avoid;">
             <tr>
@@ -1630,13 +1640,12 @@ async function exportDocument(format) {
       if (tRow.startsWith('|') && tRow.endsWith('|')) {
         if (tRow.match(/^\|[\s\-\:]+\|/)) continue;
         if (!inTable) {
-          // Perbaikan Tabel Data: Atribut border="1" murni untuk Word
           htmlRows.push('<table width="100%" border="1" cellspacing="0" cellpadding="4" style="width: 100%; border-collapse: collapse; border: 1pt solid black; margin-top: 10px; margin-bottom: 15px;">');
           inTable = true;
           isHeaderRow = true;
         }
         
-let cells = tRow.split('|').slice(1, -1);
+        let cells = tRow.split('|').slice(1, -1);
         let rowHtml = '<tr>' + cells.map((c) => {
           let cellContent = escapeHTML(c.trim())
             .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
@@ -1649,7 +1658,6 @@ let cells = tRow.split('|').slice(1, -1);
           return `<${tag} style="${style}">${cellContent}</${tag}>`;
         }).join('') + '</tr>';
 
-        // [PERBAIKAN] Tambahkan thead dan tbody agar header tabel otomatis berulang di halaman baru
         if (isHeaderRow) {
           htmlRows.push('<thead>' + rowHtml + '</thead><tbody>');
           isHeaderRow = false;
@@ -1659,25 +1667,19 @@ let cells = tRow.split('|').slice(1, -1);
 
       } else {
         if (inTable) {
-          htmlRows.push('</tbody></table>'); // Tutup tbody
+          htmlRows.push('</tbody></table>'); 
           inTable = false;
           isHeaderRow = true;
         }
-let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
+        let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
         
-        // --- TAMBAHAN: OTOMATIS UBAH KODE LATEX PECAHAN MENJADI BENTUK BIASA ---
         cleanRow = cleanRow.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
-        cleanRow = cleanRow.replace(/[\$\\]/g, ''); // Hapus sisa tanda $ atau backslash
-        // ---------------------------------------------------------------------
+        cleanRow = cleanRow.replace(/[\$\\]/g, ''); 
 
-        // [PERBAIKAN FINAL] Hapus tanda > yang menempel setelah bullet/angka SEBELUM diconvert ke HTML
         cleanRow = cleanRow.replace(/^([0-9]+\.|[a-z][\.\)]|\-|\*)\s*>\s*/i, '$1 ');
 
         let kvMatch = cleanRow.match(/^[\-\*\>]\s*(?:>\s*)?(?:\*\*)?([^:\*]{2,50})(?:\*\*)?\s*:\s*(.+)$/i);
         
-        // 2. SOLUSI BINGKAI IDENTITAS: Dibungkus dengan DIV Box, lalu isi kolom tanpa border. 
-        // Ini adalah satu-satunya cara agar MS Word membuat bingkai penuh tanpa garis putus-putus di dalamnya.
-      // [PERBAIKAN] Bungkus menggunakan Tabel 1x1 agar MS Word tidak membelah bingkai
         if (kvMatch && !cleanRow.includes('|')) {
             if (!inKvTable) {
                 htmlRows.push(`
@@ -1703,7 +1705,7 @@ let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim();
             `);
             continue; 
         
-		} else {
+        } else {
             if (inKvTable) {
                 htmlRows.push(`
                         </table>
@@ -1715,8 +1717,7 @@ let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim();
             }
         }
 
-
-let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
+        let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
 
         if (cleanRow.match(/^([A-Z]|[IVX]+)\.\s+/) || cleanRow.match(/^(LAMPIRAN|ASESMEN|RUBRIK|KISI-KISI|LEMBAR KERJA)/i)) {
           let pageBreakHtml = '';
@@ -1731,7 +1732,6 @@ let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
           let marker = listMatch[0].trim(); 
           if (marker === '-' || marker === '*') marker = '&#8226;'; 
           
-          // [SOLUSI FINAL] Ambil teks aslinya dulu, bersihkan sisa '>', BARU di-convert ke HTML
           let rawListText = cleanRow.substring(listMatch[0].length).trim();
           rawListText = rawListText.replace(/^>\s*/, '');
           
@@ -1749,8 +1749,6 @@ let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
             : 'margin-bottom: 6px; text-align: justify;'; 
           htmlRows.push(`<div style="${pStyle} font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${formattedRow}</div>`);
         }
-
-
       }
     }
     if (inTable) htmlRows.push('</table>');
@@ -1758,30 +1756,6 @@ let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
 
     const processedHTML = htmlRows.join('\n');
 
-    // 3. SOLUSI KOP SURAT: Menggunakan border tebal pada DIV agar dibaca sempurna oleh Word
-    const kopSurat = `
-      <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; margin-bottom: 0px; border-collapse: collapse; border: none;">
-        <tr>
-          <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none;">
-            <img src="${finalLogo}" width="90" height="90" alt="Logo" style="width: 90px; height: 90px; display: block; margin: 0 auto;">
-          </td>
-          <td width="85%" style="width: 85%; text-align: center; vertical-align: middle; border: none; line-height: 1.2;">
-            <div style="font-size: 16pt; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-transform: uppercase;">PEMERINTAH PROVINSI / KABUPATEN<br>${schoolName}</div>
-            <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; margin-top: 4px;">Alamat : Jalan Pendidikan No. 7, Bangkalan, Madura 69155<br>Kontak : 087846666636, E-mail : ${userEmail}</div>
-          </td>
-        </tr>
-      </table>
-      
-      <div style="border-bottom: 3pt solid black; margin-top: 10px; margin-bottom: 2px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
-      <div style="border-bottom: 1pt solid black; margin-bottom: 20px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
-      
-      <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="margin: 0 0 5px 0; font-size: 14pt; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; font-weight: bold;">${escapeHTML(docTitle)}</h2>
-        <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; color: #555; text-transform: uppercase;">DRAF UNTUK DITINJAU GURU</div>
-      </div>
-    `;
-
-    // 4. SOLUSI XML (mso): Memberitahu MS Word bahwa ini dokumen untuk diprint (Tampilan Print Layout)
     const finalHTML = `
       <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
       <head>
@@ -1924,7 +1898,6 @@ function renderProfile() {
   
   $('#content').innerHTML = `
     <style>
-      /* Menyembunyikan ikon mata bawaan dari Microsoft Edge / Browser lain */
       input[type="password"]::-ms-reveal,
       input[type="password"]::-ms-clear {
         display: none !important;
@@ -1938,6 +1911,12 @@ function renderProfile() {
       <div class="form-grid">
         ${field('name', 'Nama lengkap', state.user.name, {required: true, max: 100})}
         ${field('school', 'Nama instansi/sekolah', state.user.school, {required: true, max: 150})}
+        
+        <!-- TAMBAHKAN KOLOM INI AGAR GURU BISA MENGISI WILAYAH/KABUPATEN -->
+        ${field('region', 'Wilayah / Pemerintah Daerah', state.user.region || '', {max: 150, placeholder: 'Contoh: PEMERINTAH KABUPATEN BANGKALAN'})}
+        
+        ${field('address', 'Alamat instansi/sekolah', state.user.address || '', {max: 200, placeholder: 'Contoh: Jl. Pendidikan No. 7, Bangkalan'})}
+        ${field('phone', 'No. Kontak / Telepon', state.user.phone || '', {max: 30, placeholder: 'Contoh: 087846666636'})}
       </div>
       
       <h2 style="margin-top: 32px;">Keamanan Akun</h2>
@@ -1983,25 +1962,26 @@ async function saveProfile(form) {
   }
 
   await run(async () => {
-    // Kirim data ke backend
     await api('updateProfile', { 
       email: state.user.email, 
       name: values.name, 
       school: values.school, 
+      region: values.region, // <--- Mengirim data region
+      address: values.address,
+      phone: values.phone,
       newPassword: values.newPassword 
     });
     
-    // Perbarui state di aplikasi agar langsung berubah tanpa refresh
     state.user.name = values.name;
     state.user.school = values.school;
+    state.user.region = values.region; // <--- Memperbarui state lokal
+    state.user.address = values.address;
+    state.user.phone = values.phone;
     
-    // Ubah nama di Topbar pojok kanan atas
     const userLabelSpan = document.querySelector('.user-label span');
     if (userLabelSpan) userLabelSpan.textContent = values.name;
 
     showToast('Profil berhasil diperbarui!');
-    
-    // Kosongkan input password setelah berhasil disimpan
     form.elements.newPassword.value = '';
     
   }, 'Menyimpan profil...');
