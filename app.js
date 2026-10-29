@@ -1950,14 +1950,32 @@ async function exportDocument(format) {
             }
         }
 
-        let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
+       
 
-        if (cleanRow.match(/^([A-Z]|[IVX]+)\.\s+/) || cleanRow.match(/^(LAMPIRAN|ASESMEN|RUBRIK|KISI-KISI|LEMBAR KERJA)/i)) {
+        
+let listMatch = cleanRow.match(/^([0-9]+\. |[a-z][\.\)] |\- |\* )/i);
+        let cleanUpper = cleanTextForMatch.toUpperCase();
+        
+        // 1. Deteksi Dasar Judul (Bab A, B, I, II, dll)
+        let isHeading = cleanTextForMatch.match(/^([A-Z]|[IVX]+)\.\s+/) || cleanUpper.match(/^(LAMPIRAN|ASESMEN|RUBRIK|KISI-KISI|LEMBAR KERJA)/);
+        
+        // 2. Deteksi Cerdas Lembar Wajib Pisah (Menghapus Penghitungan Nilai, Menambahkan Kisi-Kisi & Lampiran)
+        let isMandatoryNewPage = forcePageBreak || cleanUpper.includes('KUNCI JAWABAN') || cleanUpper.includes('PEDOMAN PENSKORAN') || cleanUpper.includes('LEMBAR OBSERVASI') || cleanUpper.includes('RUBRIK') || cleanUpper.includes('KISI-KISI') || cleanUpper.includes('LAMPIRAN');
+
+        // Jika terdeteksi kata wajib pisah dan teksnya berupa judul pendek, paksa jadi judul!
+        if (isMandatoryNewPage && cleanTextForMatch.length < 120) {
+            isHeading = true;
+        }
+
+        if (isHeading && cleanTextForMatch.length < 120) {
           let pageBreakHtml = '';
-          if (forcePageBreak || cleanRow.match(/^(LAMPIRAN|ASESMEN|RUBRIK|KISI-KISI|LEMBAR KERJA)/i)) {
+          
+          // Mengeksekusi pindah halaman untuk lembar khusus
+          if (isMandatoryNewPage) {
             pageBreakHtml = '<div style="page-break-before: always;"></div>';
             forcePageBreak = false; 
           }
+          
           let formattedRow = escapeHTML(cleanRow).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
           htmlRows.push(`${pageBreakHtml}<h3 style="margin-top: 16px; margin-bottom: 8px; font-size: 12pt; font-weight: bold; font-family: 'Times New Roman', Times, serif; text-align: left; text-transform: uppercase;">${formattedRow}</h3>`);
         
@@ -1967,7 +1985,6 @@ async function exportDocument(format) {
           
           let rawListText = cleanRow.substring(listMatch[0].length).trim();
           rawListText = rawListText.replace(/^>\s*/, '');
-          
           let listText = escapeHTML(rawListText).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
           
           htmlRows.push(`<div style="margin-left: 28px; text-indent: -28px; margin-bottom: 4px; text-align: justify; font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${marker}&nbsp;&nbsp;${listText}</div>`);
