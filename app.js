@@ -29,7 +29,6 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstati
 
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, updatePassword } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-
 const firebaseConfig = {
   apiKey: "AIzaSyBAOx9xheoXL_pzhpmQvGS5ZGwE3VSc0W8",
   authDomain: "eduplan-ai-85e82.firebaseapp.com",
@@ -748,11 +747,18 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
         const favSnap = await getDoc(favRef);
         return favSnap.data();
 
-      case 'saveProfile':
-        const profileRef = doc(db, "Users", state.token);
-        await setDoc(profileRef, { name: params.name, school: params.school }, { merge: true });
-        const updatedProfileSnap = await getDoc(profileRef);
-        return updatedProfileSnap.data();
+  case 'updateProfile':
+        // 1. Simpan nama dan instansi ke database
+        await updateDoc(doc(db, "Users", params.email), {
+          name: params.name,
+          school: params.school
+        });
+        
+        // 2. Ganti kata sandi di sistem keamanan jika kolom diisi
+        if (params.newPassword && params.newPassword.trim() !== '') {
+          await updatePassword(auth.currentUser, params.newPassword);
+        }
+        return true;
 
       case 'saveUser':
         const userDocRef = params.id ? doc(db, "Users", params.id) : doc(collection(db, "Users"));
@@ -1908,20 +1914,23 @@ async function mutateDocument(action, id, value) {
   }, 'Memperbarui dokumen...');
 }
 
-/* ==========================================================================
- * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
- * Deskripsi: Halaman untuk guru mengubah data pribadi (Nama, Sekolah).
- * ========================================================================== */
-/* ==========================================================================
- * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
- * ========================================================================== */
+
+
 /* ==========================================================================
  * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
  * ========================================================================== */
 function renderProfile() {
   setRoute('profile', 'Profil guru & sekolah');
   
-  $('#content').innerHTML = `<div class="stack">
+  $('#content').innerHTML = `
+    <style>
+      /* Menyembunyikan ikon mata bawaan dari Microsoft Edge / Browser lain */
+      input[type="password"]::-ms-reveal,
+      input[type="password"]::-ms-clear {
+        display: none !important;
+      }
+    </style>
+    <div class="stack">
     ${pageHead('Profil Anda', 'Perbarui informasi pribadi dan instansi tempat Anda mengajar.')}
     
     <form class="card" data-form="profile">
@@ -1934,7 +1943,6 @@ function renderProfile() {
       <h2 style="margin-top: 32px;">Keamanan Akun</h2>
       <div class="notice">Kosongkan kolom sandi jika tidak ingin menggantinya. Email tidak dapat diubah.</div>
       
-      <!-- GRID BARU: Sandi dan Email sejajar -->
       <div class="form-grid">
         <label class="field">
           <span>Kata sandi baru</span>
@@ -1955,7 +1963,6 @@ function renderProfile() {
           </div>
         </label>
         
-        <!-- KOLOM EMAIL DITAMBAHKAN KEMBALI DI SINI -->
         ${field('email', 'Email akun', state.user.email, {disabled: true})}
       </div>
       
@@ -1963,6 +1970,8 @@ function renderProfile() {
     </form>
   </div>`;
 }
+
+
 
 
 async function saveProfile(form) {
