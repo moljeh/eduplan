@@ -1128,7 +1128,14 @@ async function mayLeave() {
 async function navigate(route, category = '', isBack = false) {
   if (!(await mayLeave())) return;
   
-  if (!isBack) history.pushState({ action: 'navigate', route: route, category: category }, '');
+  // Jika pindah secara normal (bukan lewat tombol kembali), rekam riwayatnya
+  if (!isBack) {
+    if (route === 'category') {
+      history.pushState({ action: 'navigate', route: route, category: category }, '');
+    } else {
+      history.pushState({ action: 'navigate', route: route }, '');
+    }
+  }
   
   if (route === 'dashboard') {
     await run(async () => { applyBoot(await api('boot')); }, 'Menyinkronkan data...');
@@ -1154,6 +1161,8 @@ async function navigate(route, category = '', isBack = false) {
     }, 'Memuat data admin...');
   }
 }
+
+
 function pageHead(heading, description) {
   return `<div class="page-head"><h1>${escapeHTML(heading)}</h1><p>${escapeHTML(description)}</p></div>`;
 }
@@ -2867,10 +2876,22 @@ async function init() {
     
     const s = event.state;
     if (s) {
-      if (s.action === 'generator') renderGenerator(s.type, true);
-      else if (s.action === 'editor') openDocument(s.id, true);
-      else if (s.action === 'navigate') navigate(s.route, s.category || '', true);
+      if (s.action === 'generator') {
+        renderGenerator(s.type, true);
+      } 
+      else if (s.action === 'editor') {
+        openDocument(s.id, true);
+      } 
+      else if (s.action === 'navigate') {
+        // PERBAIKAN DI SINI: Jika riwayat mencatat kategori, panggil dengan benar
+        if (s.route === 'category' && s.category) {
+          navigate('category', s.category, true);
+        } else {
+          navigate(s.route, '', true);
+        }
+      }
     } else if (state.token) {
+      // Kembali ke dashboard jika tidak ada riwayat yang spesifik
       navigate('dashboard', '', true);
     }
   });
@@ -2891,7 +2912,7 @@ async function init() {
   await run(async () => {
     applyBoot(await api('boot'));
     renderShell(); 
-    history.replaceState({ action: 'navigate', route: 'dashboard', category: '' }, '');
+    history.replaceState({ action: 'navigate', route: 'dashboard' }, '');
     renderDashboard();
   }, 'Memulihkan sesi...');
 }
