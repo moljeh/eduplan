@@ -2495,23 +2495,43 @@ function renderHistory(mode) {
   setRoute(mode, names[mode]);
   const types = Object.values(state.catalog).flatMap(category => category.items);
   
-  // Tombol ekstra Hapus Permanen jika sedang berada di menu Sampah
-  const extraTrashButton = mode === 'trash' ? `${button('Hapus Terpilih', 'delete-selected-trash', '', 'btn-danger')} ` : '';
+  // PERBAIKAN: Desain tombol Pilih Semua & Hapus agar modern, seimbang, dan sejajar di HP
+  const extraTrashButton = mode === 'trash' ? `
+    <div style="display: flex; gap: 10px; width: 100%; margin-top: 12px; padding-top: 16px; border-top: 1px dashed var(--line);">
+      <label style="display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; margin: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-alt); color: var(--text); font-size: 13px; font-weight: 600; flex: 1; transition: background 0.2s;">
+        <input type="checkbox" id="check-all-trash" style="width: 20px !important; height: 20px !important; min-height: 20px !important; padding: 0 !important; margin: 0; accent-color: var(--primary); cursor: pointer;"> 
+        <span>Pilih Semua</span>
+      </label>
+      <button type="button" class="btn btn-danger" data-action="delete-selected-trash" style="margin: 0; padding: 10px 14px; font-size: 13px; flex: 1; justify-content: center; display: flex; align-items: center; gap: 6px; border-radius: 10px;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+        Hapus Terpilih
+      </button>
+    </div>
+  ` : '';
 
+  // PERBAIKAN: Seluruh Toolbar dimasukkan ke dalam Card agar rapi dan terpusat
   $('#content').innerHTML = `<div class="stack">
     ${pageHead(names[mode], state.user.role === 'admin' ? 'Admin dapat mengelola dokumen seluruh pengguna.' : 'Kelola dokumen milik akun Anda.')}
-    <div class="toolbar">
-      <input id="doc-search" aria-label="Cari dokumen" placeholder="Cari judul, pemilik, atau jenis...">
-      <select id="doc-type" aria-label="Filter jenis"><option value="">Semua jenis</option>${types.map(type => `<option value="${type}">${escapeHTML(title(type))}</option>`).join('')}</select>
-      <select id="doc-provider" aria-label="Filter mesin">
-        <option value="">${state.user.role === 'admin' ? 'Semua provider' : 'Semua Mesin AI'}</option>
-        <option value="gemini">${state.user.role === 'admin' ? 'Gemini' : 'EduPlan AI (Standard)'}</option>
-        <option value="openai">${state.user.role === 'admin' ? 'OpenAI' : 'EduPlan AI (Pro)'}</option>
-        <option value="claude">${state.user.role === 'admin' ? 'Claude' : 'EduPlan AI (Premium)'}</option>
-      </select>
-      ${button('↻ Muat ulang', 'refresh-documents', '', 'btn-outline')}
-      ${extraTrashButton}
+    
+    <div class="card" style="padding: 18px; margin-bottom: 8px;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <input id="doc-search" aria-label="Cari dokumen" placeholder="Cari judul, pemilik, atau jenis..." style="width: 100%;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+              <select id="doc-type" aria-label="Filter jenis" style="flex: 1; min-width: 120px;"><option value="">Semua jenis</option>${types.map(type => `<option value="${type}">${escapeHTML(title(type))}</option>`).join('')}</select>
+              <select id="doc-provider" aria-label="Filter mesin" style="flex: 1; min-width: 120px;">
+                <option value="">${state.user.role === 'admin' ? 'Semua provider' : 'Semua Mesin AI'}</option>
+                <option value="gemini">${state.user.role === 'admin' ? 'Gemini' : 'EduPlan AI (Standard)'}</option>
+                <option value="openai">${state.user.role === 'admin' ? 'OpenAI' : 'EduPlan AI (Pro)'}</option>
+                <option value="claude">${state.user.role === 'admin' ? 'Claude' : 'EduPlan AI (Premium)'}</option>
+              </select>
+          </div>
+          <button type="button" class="btn btn-outline" data-action="refresh-documents" style="width: 100%; justify-content: center; padding: 10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path></svg> Muat ulang daftar dokumen
+          </button>
+          ${extraTrashButton}
+        </div>
     </div>
+
     <div id="document-results"></div>
   </div>`;
   $('#doc-search').value = state.filters.query;
@@ -2538,7 +2558,6 @@ function renderDocumentResults() {
   }
   
   const isTrash = mode === 'trash';
-  const thCheck = isTrash ? '<th style="width: 40px; text-align: center;"><input type="checkbox" id="check-all-trash" style="width: 16px; height: 16px; cursor: pointer;"></th>' : '';
 
   const rows = shown.map(doc => {
     let displayProvider = title(doc.provider);
@@ -2549,14 +2568,18 @@ function renderDocumentResults() {
        else displayProvider = 'EduPlan AI';
     }
     
-    // Checkbox per baris tabel untuk mode sampah
-    const tdCheck = isTrash ? `<td style="text-align: center;"><input type="checkbox" class="trash-checkbox" value="${doc.id}" style="width: 16px; height: 16px; cursor: pointer;"></td>` : '';
+    // PERBAIKAN TAMPILAN CHECKBOX DAFTAR: Memaksa ukuran dan posisi presisi dengan margin
+    const titleContent = isTrash 
+        ? `<div style="display: flex; gap: 14px; align-items: flex-start; padding: 4px 0;">
+             <input type="checkbox" class="trash-checkbox" value="${doc.id}" style="width: 22px !important; height: 22px !important; min-height: 22px !important; margin-top: 0; padding: 0 !important; cursor: pointer; flex-shrink: 0; accent-color: var(--primary);">
+             <div><strong style="font-size: 14px; color: var(--text);">${escapeHTML(doc.title)}</strong><br><small class="muted" style="font-size: 12px; margin-top: 2px; display: block;">${escapeHTML(doc.owner)}</small></div>
+           </div>`
+        : `<div><strong style="font-size: 14px; color: var(--text);">${escapeHTML(doc.title)}</strong><br><small class="muted" style="font-size: 12px; margin-top: 2px; display: block;">${escapeHTML(doc.owner)}</small></div>`;
 
     return `
-    <tr>
-      ${tdCheck}
-      <td class="doc-title"><strong>${escapeHTML(doc.title)}</strong><br><small class="muted">${escapeHTML(doc.owner)}</small></td>
-      <td>${badge(title(doc.type))}<br><small class="muted">${escapeHTML(displayProvider)}</small></td>
+    <tr style="transition: all 0.2s ease;">
+      <td class="doc-title">${titleContent}</td>
+      <td>${badge(title(doc.type))}<br><small class="muted" style="margin-top: 6px; display: inline-block;">${escapeHTML(displayProvider)}</small></td>
       <td class="nowrap"><small>${escapeHTML(dateText(doc.updated))}</small></td>
       <td><div class="actions">
         ${isTrash
@@ -2570,7 +2593,7 @@ function renderDocumentResults() {
 
   $('#document-results').innerHTML = `
     <div class="card table-wrap"><table>
-      <thead><tr>${thCheck}<th>DOKUMEN</th><th>JENIS / PROVIDER</th><th>DIPERBARUI</th><th>AKSI</th></tr></thead>
+      <thead><tr><th>DOKUMEN</th><th>JENIS / PROVIDER</th><th>DIPERBARUI</th><th>AKSI</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="row between pager"><small class="muted">${docs.length} dokumen · Halaman ${f.page} dari ${pages}</small>
@@ -2578,6 +2601,7 @@ function renderDocumentResults() {
       ${button('→', 'page', `data-page="${f.page + 1}" ${f.page >= pages ? 'disabled' : ''}`, 'btn-small')}</div>
     </div></div>`;
 }
+
 
 // === FUNGSI EKSEKUSI HAPUS PERMANEN ===
 async function deleteSelectedTrash() {
