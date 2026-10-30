@@ -23,7 +23,9 @@
 'use strict';
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, increment, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-storage.js";
 
 
@@ -782,6 +784,14 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
         await setDoc(trashRef, { deleted: params.value, updated: Date.now() }, { merge: true });
         const trashSnap = await getDoc(trashRef);
         return trashSnap.data();
+		
+		case 'deletePermanently':
+        const batch = writeBatch(db);
+        params.ids.forEach(id => {
+          batch.delete(doc(db, "Documents", id));
+        });
+        await batch.commit();
+        return true;
 
       case 'favoriteDocument':
         const favRef = doc(db, "Documents", params.id);
@@ -2211,10 +2221,18 @@ if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
           isHeaderRow = true;
         }
         
-        let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
+       let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
+        
+        // Terjemahkan kode matematika AI (LaTeX) menjadi simbol standar
+        cleanRow = cleanRow.replace(/\\times/gi, '×'); // kali
+        cleanRow = cleanRow.replace(/\\dots/gi, '...'); // titik-titik
+        cleanRow = cleanRow.replace(/\\div/gi, '÷'); // bagi
+        cleanRow = cleanRow.replace(/\\leq/gi, '≤'); // kurang dari sama dengan
+        cleanRow = cleanRow.replace(/\\geq/gi, '≥'); // lebih dari sama dengan
+        cleanRow = cleanRow.replace(/\\pm/gi, '±'); // plus-minus
         
         cleanRow = cleanRow.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
-        cleanRow = cleanRow.replace(/[\$\\]/g, ''); 
+        cleanRow = cleanRow.replace(/[\$\\]/g, '');
 
         cleanRow = cleanRow.replace(/^([0-9]+\.|[a-z][\.\)]|\-|\*)\s*>\s*/i, '$1 ');
 
@@ -2468,15 +2486,18 @@ async function copyDocument() {
   }
 }
 
+
 /* ==========================================================================
  * KELOMPOK PENGELOLAAN DOKUMEN (F43 - F45)
- * Deskripsi: Merender daftar tabel untuk Riwayat, Favorit, dan Sampah, 
- *            serta melakukan tindakan hapus sementara dan pemulihan.
  * ========================================================================== */
 function renderHistory(mode) {
   const names = {history: 'Riwayat dokumen', favorites: 'Favorit', trash: 'Sampah'};
   setRoute(mode, names[mode]);
   const types = Object.values(state.catalog).flatMap(category => category.items);
+  
+  // Tombol ekstra Hapus Permanen jika sedang berada di menu Sampah
+  const extraTrashButton = mode === 'trash' ? `${button('Hapus Terpilih', 'delete-selected-trash', '', 'btn-danger')} ` : '';
+
   $('#content').innerHTML = `<div class="stack">
     ${pageHead(names[mode], state.user.role === 'admin' ? 'Admin dapat mengelola dokumen seluruh pengguna.' : 'Kelola dokumen milik akun Anda.')}
     <div class="toolbar">
@@ -2489,6 +2510,7 @@ function renderHistory(mode) {
         <option value="claude">${state.user.role === 'admin' ? 'Claude' : 'EduPlan AI (Premium)'}</option>
       </select>
       ${button('↻ Muat ulang', 'refresh-documents', '', 'btn-outline')}
+      ${extraTrashButton}
     </div>
     <div id="document-results"></div>
   </div>`;
@@ -2514,9 +2536,11 @@ function renderDocumentResults() {
     $('#document-results').innerHTML = '<div class="card empty"><div class="empty-icon">▤</div><h2>Belum ada dokumen</h2><p>Dokumen yang sesuai akan muncul di sini.</p></div>';
     return;
   }
+  
+  const isTrash = mode === 'trash';
+  const thCheck = isTrash ? '<th style="width: 40px; text-align: center;"><input type="checkbox" id="check-all-trash" style="width: 16px; height: 16px; cursor: pointer;"></th>' : '';
 
-
-const rows = shown.map(doc => {
+  const rows = shown.map(doc => {
     let displayProvider = title(doc.provider);
     if (state.user && state.user.role !== 'admin') {
        if (doc.provider === 'gemini') displayProvider = 'EduPlan Standard';
@@ -2524,13 +2548,18 @@ const rows = shown.map(doc => {
        else if (doc.provider === 'claude') displayProvider = 'EduPlan Premium';
        else displayProvider = 'EduPlan AI';
     }
+    
+    // Checkbox per baris tabel untuk mode sampah
+    const tdCheck = isTrash ? `<td style="text-align: center;"><input type="checkbox" class="trash-checkbox" value="${doc.id}" style="width: 16px; height: 16px; cursor: pointer;"></td>` : '';
+
     return `
     <tr>
+      ${tdCheck}
       <td class="doc-title"><strong>${escapeHTML(doc.title)}</strong><br><small class="muted">${escapeHTML(doc.owner)}</small></td>
       <td>${badge(title(doc.type))}<br><small class="muted">${escapeHTML(displayProvider)}</small></td>
       <td class="nowrap"><small>${escapeHTML(dateText(doc.updated))}</small></td>
       <td><div class="actions">
-        ${mode === 'trash'
+        ${isTrash
           ? button('Pulihkan', 'trash-document', `data-id="${doc.id}" data-value="false"`, 'btn-small')
           : `${button('Buka', 'open-document', `data-id="${doc.id}"`, 'btn-small')}
              ${button(doc.favorite ? '★' : '☆', 'favorite-document', `data-id="${doc.id}" data-value="${!doc.favorite}" aria-label="Ubah favorit"`, 'btn-small')}
@@ -2539,16 +2568,47 @@ const rows = shown.map(doc => {
     </tr>`;
   }).join('');
 
-
   $('#document-results').innerHTML = `
     <div class="card table-wrap"><table>
-      <thead><tr><th>DOKUMEN</th><th>JENIS / PROVIDER</th><th>DIPERBARUI</th><th>AKSI</th></tr></thead>
+      <thead><tr>${thCheck}<th>DOKUMEN</th><th>JENIS / PROVIDER</th><th>DIPERBARUI</th><th>AKSI</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>
     <div class="row between pager"><small class="muted">${docs.length} dokumen · Halaman ${f.page} dari ${pages}</small>
       <div class="row">${button('←', 'page', `data-page="${f.page - 1}" ${f.page <= 1 ? 'disabled' : ''}`, 'btn-small')}
       ${button('→', 'page', `data-page="${f.page + 1}" ${f.page >= pages ? 'disabled' : ''}`, 'btn-small')}</div>
     </div></div>`;
+}
+
+// === FUNGSI EKSEKUSI HAPUS PERMANEN ===
+async function deleteSelectedTrash() {
+  const checkboxes = document.querySelectorAll('.trash-checkbox:checked');
+  const ids = Array.from(checkboxes).map(cb => cb.value);
+  
+  if (ids.length === 0) {
+    EduNotify.toast('Tandai minimal satu dokumen yang ingin dihapus permanen.', {type: 'warning'});
+    return;
+  }
+  
+  const accepted = await EduNotify.ask({
+    title: 'Hapus Permanen?',
+    message: `Anda akan menghapus ${ids.length} dokumen secara permanen dari EduPlan AI. Tindakan ini TIDAK BISA dibatalkan. Lanjutkan?`,
+    confirmText: 'Ya, Hapus Permanen',
+    cancelText: 'Batal',
+    danger: true,
+    icon: '!'
+  });
+  
+  if (!accepted) return;
+
+  await run(async () => {
+    await api('deletePermanently', { ids });
+    
+    // Hapus dokumen dari state memori browser agar tabel langsung terupdate
+    state.documents = state.documents.filter(d => !ids.includes(d.id));
+    
+    renderDocumentResults();
+    showToast(`${ids.length} dokumen berhasil dihapus permanen.`);
+  }, 'Menghapus dokumen secara permanen...');
 }
 
 async function mutateDocument(action, id, value) {
@@ -3656,6 +3716,9 @@ async function onClick(event) {
     case 'refine-selected': return refineSelectedText();
     case 'favorite-document': return mutateDocument('favoriteDocument', data.id, data.value === 'true');
     case 'trash-document': return mutateDocument('trashDocument', data.id, data.value === 'true');
+	
+	case 'delete-selected-trash': return deleteSelectedTrash();
+	
     case 'refresh-documents': return navigate(state.route);
     case 'page': state.filters.page = Number(data.page); renderDocumentResults(); return;
     case 'edit-user': return editUser(data.id);
@@ -3757,33 +3820,51 @@ function onInput(event) {
 }
 
 function onChange(event) {
+  // Tambahan fitur Pilih Semua di menu Sampah
+  if (event.target.id === 'check-all-trash') {
+    const isChecked = event.target.checked;
+    document.querySelectorAll('.trash-checkbox').forEach(cb => {
+        cb.checked = isChecked;
+    });
+    return;
+  }
+  
+  // Penanganan dropdown Fase/Kelas
   if (event.target.name === 'level_select') {
     const customContainer = document.getElementById('custom-level-container');
     const customInput = document.querySelector('input[name="level_custom"]');
     if (event.target.value === 'Lainnya / Umum') {
-      customContainer.style.display = 'block';
-      customInput.required = true;
+      if (customContainer) customContainer.style.display = 'block';
+      if (customInput) customInput.required = true;
     } else {
-      customContainer.style.display = 'none';
-      customInput.required = false;
-      customInput.value = '';
+      if (customContainer) customContainer.style.display = 'none';
+      if (customInput) {
+          customInput.required = false;
+          customInput.value = '';
+      }
     }
     return;
   }
+  
+  // Penanganan dropdown Model AI di Panel Admin
   if (event.target.name === 'model_select') {
     const form = event.target.closest('form');
     const customContainer = form.querySelector('.custom-model-container');
     const customInput = form.querySelector('input[name="model_custom"]');
     if (event.target.value === 'Lainnya') {
-      customContainer.style.display = 'block';
-      customInput.required = true;
+      if (customContainer) customContainer.style.display = 'block';
+      if (customInput) customInput.required = true;
     } else {
-      customContainer.style.display = 'none';
-      customInput.required = false;
-      customInput.value = '';
+      if (customContainer) customContainer.style.display = 'none';
+      if (customInput) {
+          customInput.required = false;
+          customInput.value = '';
+      }
     }
     return;
   }
+  
+  // Penanganan Filter di Riwayat/Sampah
   if (event.target.id === 'doc-type') state.filters.type = event.target.value;
   else if (event.target.id === 'doc-provider') state.filters.provider = event.target.value;
   else return;
