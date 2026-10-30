@@ -470,7 +470,7 @@ async function api(action, params = {}) {
         
        return { token: params.email, user: userData };
 
-      case 'boot':
+     case 'boot':
         const userRef = doc(db, "Users", state.token);
         const userSnap = await getDoc(userRef);
         if (!userSnap.exists()) throw new Error("Sesi login Anda sudah berakhir. Silakan masuk ulang.");
@@ -488,13 +488,21 @@ async function api(action, params = {}) {
            return { id: data.id, title: data.title, type: data.type, provider: data.provider, owner: data.owner, updated: data.updated, created: data.created, revision: data.revision, deleted: data.deleted || false, favorite: data.favorite || false };
         }).sort((a, b) => b.updated - a.updated);
 
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const usedToday = userDocs.filter(d => d.created >= todayStart.getTime()).length;
-
         const settingsRefBoot = doc(db, "Settings", "global");
         const settingsSnapBoot = await getDoc(settingsRefBoot);
-        const dailyLimit = settingsSnapBoot.exists() ? settingsSnapBoot.data().dailyLimit : 10;
+        
+        // PERBAIKAN: Jadikan limit global sebagai satu-satunya penentu kuota di dashboard
+        const globalLimit = settingsSnapBoot.exists() ? settingsSnapBoot.data().dailyLimit : 50;
+        const userDailyLimit = globalLimit;
+        
+        // Pastikan Dashboard membaca jumlah 'Klik' (usedToday), bukan jumlah dokumen
+        const todayStr = new Date().toLocaleDateString('id-ID');
+        let displayUsed = bootUserData.usedToday || 0;
+        
+        // Jika hari sudah berganti tapi user belum melakukan generate, tampilkan 0 di dashboard
+        if (bootUserData.lastResetDate !== todayStr) {
+            displayUsed = 0; 
+        }
 
         const appCatalog = {
           perencanaan: { 
@@ -529,12 +537,12 @@ async function api(action, params = {}) {
           }
         };
 
-        return {
+return {
           user: bootUserData,
           catalog: appCatalog,
           providers: activeProviders,
           documents: userDocs,
-          usage: { used: usedToday, limit: dailyLimit }
+          usage: { used: displayUsed, limit: userDailyLimit } // <-- Gunakan userDailyLimit
         };
 
       case 'adminData':
@@ -3166,10 +3174,18 @@ async function checkQuotaBeforeGenerate(userEmail) {
   try {
     const userRef = doc(db, 'Users', userEmail);
     const snap = await getDoc(userRef);
+    
+    // Ambil pengaturan global terlebih dahulu
+    const settingsSnap = await getDoc(doc(db, 'Settings', 'global'));
+    const globalLimit = settingsSnap.exists() ? settingsSnap.data().dailyLimit : 50;
+
     if (snap.exists()) {
       const data = snap.data();
       const tokenBalance = data.tokenBalance || 0;
-      const dailyQuota = data.dailyQuota || 20; 
+      
+      // PERBAIKAN: Selalu gunakan globalLimit sebagai patokan utama
+      const dailyQuota = globalLimit; 
+      
       let usedToday = data.usedToday || 0;
       const lastResetDate = data.lastResetDate || '';
       const today = new Date().toLocaleDateString('id-ID');
@@ -3179,13 +3195,14 @@ async function checkQuotaBeforeGenerate(userEmail) {
          await updateDoc(userRef, { usedToday: 0, lastResetDate: today });
          usedToday = 0; 
       }
+      
       if (usedToday >= dailyQuota) {
-         setBusy(false); // Hentikan loading sebelum memunculkan popup
+         setBusy(false);
          await window.Swal.fire('Batas Harian', 'Batas klik harian Anda sudah habis. Silakan coba besok.', 'warning');
          return false;
       }
       if (tokenBalance <= 0) {
-         setBusy(false); // Hentikan loading sebelum memunculkan popup
+         setBusy(false);
          await window.Swal.fire('Saldo Habis', 'Saldo token AI habis. Silakan hubungi admin untuk Top-Up.', 'error');
          return false;
       }
