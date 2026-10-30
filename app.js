@@ -789,13 +789,15 @@ Berikan hasil langsung berupa isi dokumen yang terstruktur, rapi, dan siap digun
         const favSnap = await getDoc(favRef);
         return favSnap.data();
 
-      case 'updateProfile':
+case 'updateProfile':
         await updateDoc(doc(db, "Users", params.email), {
           name: params.name,
           school: params.school,
           region: params.region,
           address: params.address,
-          phone: params.phone
+          phone: params.phone,
+          logoLeft: params.logoLeft || '',
+          logoRight: params.logoRight || ''
         });
         if (params.newPassword && params.newPassword.trim() !== '') {
           await updatePassword(auth.currentUser, params.newPassword);
@@ -1534,7 +1536,8 @@ function getFormConfig(type, providers) {
     </div>
     ${field('topic', 'Materi / topik *', '', {required: true, max: 200, placeholder: 'Contoh: Bab 1 / Pecahan Senilai'})}
   `;
-  const providerField = selectField('provider', 'Provider AI', providers);
+ const providerLabel = state.user && state.user.role === 'admin' ? 'Provider AI (Mode Admin)' : 'Mesin Pemroses AI';
+  const providerField = selectField('provider', providerLabel, providers);
   let grid = '', textareas = '';
 
   switch (type) {
@@ -1578,7 +1581,16 @@ async function renderGenerator(type, isBack = false) {
   state.generatorType = type;
   setRoute('generator', `Generator / ${title(type)}`);
   
-  const providers = state.providers.map(p => ({value: p.id, text: `${title(p.id)} · ${p.model}`}));
+ const providers = state.providers.map(p => {
+    let displayName = `${title(p.id)} · ${p.model}`;
+    if (state.user && state.user.role !== 'admin') {
+       if (p.id === 'gemini') displayName = 'EduPlan AI (Standard)';
+       else if (p.id === 'openai') displayName = 'EduPlan AI (Pro)';
+       else if (p.id === 'claude') displayName = 'EduPlan AI (Premium)';
+       else displayName = 'EduPlan AI (Utama)';
+    }
+    return { value: p.id, text: displayName };
+  });
   const noProvider = providers.length === 0;
   const config = getFormConfig(type, providers);
 
@@ -1903,9 +1915,19 @@ async function openDocument(id, isBack = false) {
 function renderEditor() {
   setRoute('editor', 'Editor dokumen');
   const doc = state.editor.doc;
+  
+  let displayProvider = title(doc.provider);
+  if (state.user && state.user.role !== 'admin') {
+     if (doc.provider === 'gemini') displayProvider = 'EduPlan AI (Standard)';
+     else if (doc.provider === 'openai') displayProvider = 'EduPlan AI (Pro)';
+     else if (doc.provider === 'claude') displayProvider = 'EduPlan AI (Premium)';
+     else displayProvider = 'EduPlan AI';
+  }
+  
+  
   $('#content').innerHTML = `<div class="stack">
     <div class="row between">
-      <div><h1>Editor dokumen</h1><p class="muted mb-0">${escapeHTML(title(doc.type))} · ${escapeHTML(doc.provider)} · ${escapeHTML(doc.owner)}</p></div>
+      <div><h1>Editor dokumen</h1><p class="muted mb-0">${escapeHTML(title(doc.type))} · ${escapeHTML(displayProvider)} · ${escapeHTML(doc.owner)}</p></div>
       ${button('← Riwayat', 'navigate', 'data-route="history"', 'btn-outline')}
     </div>
     <div class="notice">Ekspor menggunakan teks sederhana. Tabel kompleks, kop surat, dan slide tidak diformat otomatis. Simpan perubahan sebelum menutup halaman.</div>
@@ -2001,37 +2023,69 @@ async function exportDocument(format) {
 
     const finalLogo = format === 'pdf' ? logoBase64 : logoUrl;
 	
-    // Pengambilan data profil secara dinamis
+// Pengambilan data profil secara dinamis
     const schoolName = escapeHTML(state.user.school || 'EDUPLAN AI'); 
     const schoolRegion = escapeHTML(state.user.region || 'PEMERINTAH PROVINSI / KABUPATEN'); 
     const schoolAddress = escapeHTML(state.user.address || 'Jalan Pendidikan No. 7, Bangkalan, Madura 69155');
     const schoolPhone = escapeHTML(state.user.phone || '087846666636');
     const userEmail = escapeHTML(state.user.email || 'admin@eduplanai.com');
 
-    // Deklarasi tunggal kopSurat
+    // Menyiapkan Logo dari database profil. Jika user sengaja menghapus (kosong), biarkan kosong.
+    let logoLeftUrl = '';
+    if (state.user.logoLeft === '') {
+        logoLeftUrl = ''; // Sengaja dikosongkan oleh guru
+    } else if (state.user.logoLeft) {
+        logoLeftUrl = state.user.logoLeft; // Menggunakan logo unggahan guru
+    } else {
+        logoLeftUrl = window.location.origin + '/asset/logo.png'; // Logo bawaan default jika belum pernah setting
+    }
+    
+    const logoRightUrl = state.user.logoRight || '';
+
+    // Kalkulasi lebar Kop Surat dinamis agar tulisan di tengah tetap simetris
+    let textWidth = 100;
+    let logoLeftHtml = '';
+    let logoRightHtml = '';
+
+    if (logoLeftUrl) {
+      textWidth -= 15; // Kurangi lebar teks 15% untuk tempat logo kiri
+      logoLeftHtml = `
+        <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none; padding: 0;">
+          <img src="${logoLeftUrl}" width="90" height="90" alt="Logo Kiri" style="width: 90px; height: 90px; object-fit: contain; display: block; margin: 0 auto;">
+        </td>`;
+    }
+
+    if (logoRightUrl) {
+      textWidth -= 15; // Kurangi lebar teks 15% lagi untuk tempat logo kanan
+      logoRightHtml = `
+        <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none; padding: 0;">
+          <img src="${logoRightUrl}" width="90" height="90" alt="Logo Kanan" style="width: 90px; height: 90px; object-fit: contain; display: block; margin: 0 auto;">
+        </td>`;
+    }
+
+    // Deklarasi tunggal kopSurat Cerdas dengan penimpaan text-align
     const kopSurat = `
       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; margin-bottom: 0px; border-collapse: collapse; border: none;">
         <tr>
-          <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none;">
-            <img src="${finalLogo}" width="90" height="90" alt="Logo" style="width: 90px; height: 90px; display: block; margin: 0 auto;">
+          ${logoLeftHtml}
+          <td width="${textWidth}%" style="width: ${textWidth}%; text-align: center !important; vertical-align: middle; border: none; line-height: 1.2; padding: 0 10px;">
+            <div style="text-align: center !important; font-size: 16pt; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-transform: uppercase; margin: 0;">${schoolRegion}<br>${schoolName}</div>
+            <div style="text-align: center !important; font-size: 10pt; font-family: 'Times New Roman', Times, serif; margin-top: 4px; margin-bottom: 0;">Alamat : ${schoolAddress}<br>Kontak : ${schoolPhone}, E-mail : ${userEmail}</div>
           </td>
-          <td width="85%" style="width: 85%; text-align: center; vertical-align: middle; border: none; line-height: 1.2;">
-            <div style="font-size: 16pt; font-family: 'Times New Roman', Times, serif; font-weight: bold; text-transform: uppercase;">${schoolRegion}<br>${schoolName}</div>
-            <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; margin-top: 4px;">Alamat : ${schoolAddress}<br>Kontak : ${schoolPhone}, E-mail : ${userEmail}</div>
-          </td>
+          ${logoRightHtml}
         </tr>
       </table>
       
       <div style="border-bottom: 3pt solid black; margin-top: 10px; margin-bottom: 2px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
       <div style="border-bottom: 1pt solid black; margin-bottom: 20px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
       
-      <div style="text-align: center; margin-bottom: 20px;">
-        <h2 style="margin: 0 0 5px 0; font-size: 14pt; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; font-weight: bold;">${escapeHTML(docTitle)}</h2>
-        <div style="font-size: 10pt; font-family: 'Times New Roman', Times, serif; color: #555; text-transform: uppercase;">DRAF UNTUK DITINJAU GURU</div>
+      <div style="text-align: center !important; margin-bottom: 20px;">
+        <h2 style="margin: 0 0 5px 0; font-size: 14pt; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; font-weight: bold; text-align: center !important;">${escapeHTML(docTitle)}</h2>
+        <div style="text-align: center !important; font-size: 10pt; font-family: 'Times New Roman', Times, serif; color: #555; text-transform: uppercase; margin: 0;">DRAF UNTUK DITINJAU GURU</div>
       </div>
     `;
 
-const rows = rawText.split('\n');
+    const rows = rawText.split('\n');
     let htmlRows = [];
     let inTable = false;
     let isHeaderRow = true;
@@ -2056,44 +2110,44 @@ const rows = rawText.split('\n');
         }
       }
 
-      if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
+if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
         skipSignatureLines = true;
         forcePageBreak = true; 
         contentCounter++; // Dihitung sebagai konten
         const namaGuru = escapeHTML(state.user.name || '..................................................');
         
         htmlRows.push(`
-          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border: none; margin-top: 30px; margin-bottom: 20px; border-collapse: collapse; page-break-inside: avoid;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; border: none !important; margin-top: 30px; margin-bottom: 20px; border-collapse: collapse; page-break-inside: avoid;">
             <tr>
-              <td width="50%" style="width: 50%; text-align: center; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: bottom; line-height: 1.15; padding-right: 20px;">
+              <td width="50%" style="width: 50%; text-align: center; border: none !important; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: bottom; line-height: 1.15; padding-right: 20px;">
                 Mengetahui,<br>
                 Kepala Sekolah
                 <div style="height: 70px;"></div>
-                <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 0 auto;">
+                <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="width: 240px !important; border-collapse: collapse; margin: 0 auto; border: none !important;">
                   <tr>
-                    <td style="border-bottom: 1pt solid black; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px;">
+                    <td style="border: none !important; border-bottom: 1pt solid black !important; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px; vertical-align: bottom;">
                       &nbsp;
                     </td>
                   </tr>
                   <tr>
-                    <td style="text-align: left; padding-top: 6px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; white-space: nowrap; vertical-align: bottom;">
+                    <td style="border: none !important; text-align: left; padding-top: 6px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; white-space: nowrap; vertical-align: top;">
                       NIP.
                     </td>
                   </tr>
                 </table>
               </td>
-              <td width="50%" style="width: 50%; text-align: center; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: bottom; line-height: 1.15; padding-left: 20px;">
+              <td width="50%" style="width: 50%; text-align: center; border: none !important; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: bottom; line-height: 1.15; padding-left: 20px;">
                 Bangkalan, ..............................<br>
                 Guru Mata Pelajaran
                 <div style="height: 70px;"></div>
-                <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin: 0 auto;">
+                <table align="center" width="240" border="0" cellspacing="0" cellpadding="0" style="width: 240px !important; border-collapse: collapse; margin: 0 auto; border: none !important;">
                   <tr>
-                    <td style="border-bottom: 1pt solid black; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px;">
+                    <td style="border: none !important; border-bottom: 1pt solid black !important; text-align: center; font-weight: bold; padding-bottom: 2px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; height: 18px; vertical-align: bottom;">
                       ${namaGuru}
                     </td>
                   </tr>
                   <tr>
-                    <td style="text-align: left; padding-top: 6px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; white-space: nowrap; vertical-align: bottom;">
+                    <td style="border: none !important; text-align: left; padding-top: 6px; font-size: 12pt; font-family: 'Times New Roman', Times, serif; white-space: nowrap; vertical-align: top;">
                       NIP.
                     </td>
                   </tr>
@@ -2428,7 +2482,12 @@ function renderHistory(mode) {
     <div class="toolbar">
       <input id="doc-search" aria-label="Cari dokumen" placeholder="Cari judul, pemilik, atau jenis...">
       <select id="doc-type" aria-label="Filter jenis"><option value="">Semua jenis</option>${types.map(type => `<option value="${type}">${escapeHTML(title(type))}</option>`).join('')}</select>
-      <select id="doc-provider" aria-label="Filter provider"><option value="">Semua provider</option><option value="gemini">Gemini</option><option value="openai">OpenAI</option><option value="claude">Claude</option></select>
+      <select id="doc-provider" aria-label="Filter mesin">
+        <option value="">${state.user.role === 'admin' ? 'Semua provider' : 'Semua Mesin AI'}</option>
+        <option value="gemini">${state.user.role === 'admin' ? 'Gemini' : 'EduPlan AI (Standard)'}</option>
+        <option value="openai">${state.user.role === 'admin' ? 'OpenAI' : 'EduPlan AI (Pro)'}</option>
+        <option value="claude">${state.user.role === 'admin' ? 'Claude' : 'EduPlan AI (Premium)'}</option>
+      </select>
       ${button('↻ Muat ulang', 'refresh-documents', '', 'btn-outline')}
     </div>
     <div id="document-results"></div>
@@ -2455,10 +2514,20 @@ function renderDocumentResults() {
     $('#document-results').innerHTML = '<div class="card empty"><div class="empty-icon">▤</div><h2>Belum ada dokumen</h2><p>Dokumen yang sesuai akan muncul di sini.</p></div>';
     return;
   }
-  const rows = shown.map(doc => `
+
+
+const rows = shown.map(doc => {
+    let displayProvider = title(doc.provider);
+    if (state.user && state.user.role !== 'admin') {
+       if (doc.provider === 'gemini') displayProvider = 'EduPlan Standard';
+       else if (doc.provider === 'openai') displayProvider = 'EduPlan Pro';
+       else if (doc.provider === 'claude') displayProvider = 'EduPlan Premium';
+       else displayProvider = 'EduPlan AI';
+    }
+    return `
     <tr>
       <td class="doc-title"><strong>${escapeHTML(doc.title)}</strong><br><small class="muted">${escapeHTML(doc.owner)}</small></td>
-      <td>${badge(title(doc.type))}<br><small class="muted">${escapeHTML(title(doc.provider))}</small></td>
+      <td>${badge(title(doc.type))}<br><small class="muted">${escapeHTML(displayProvider)}</small></td>
       <td class="nowrap"><small>${escapeHTML(dateText(doc.updated))}</small></td>
       <td><div class="actions">
         ${mode === 'trash'
@@ -2467,7 +2536,10 @@ function renderDocumentResults() {
              ${button(doc.favorite ? '★' : '☆', 'favorite-document', `data-id="${doc.id}" data-value="${!doc.favorite}" aria-label="Ubah favorit"`, 'btn-small')}
              ${button('Sampah', 'trash-document', `data-id="${doc.id}" data-value="true"`, 'btn-small btn-danger')}`}
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
+
+
   $('#document-results').innerHTML = `
     <div class="card table-wrap"><table>
       <thead><tr><th>DOKUMEN</th><th>JENIS / PROVIDER</th><th>DIPERBARUI</th><th>AKSI</th></tr></thead>
@@ -2502,16 +2574,43 @@ async function mutateDocument(action, id, value) {
 /* ==========================================================================
  * KELOMPOK PENGATURAN PROFIL GURU (F46 - F47)
  * ========================================================================== */
+// Utilitas Global untuk Pratinjau & Kompresi Logo agar Ringan di Database
+window.previewLogo = function(input, previewId, textId) {
+  if (input.files && input.files[0]) {
+     const reader = new FileReader();
+     reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+           const canvas = document.createElement('canvas');
+           const MAX_SIZE = 250; // Kompres ukuran agar sangat ringan
+           let width = img.width;
+           let height = img.height;
+           if (width > height) {
+             if (width > MAX_SIZE) { height *= MAX_SIZE / width; width = MAX_SIZE; }
+           } else {
+             if (height > MAX_SIZE) { width *= MAX_SIZE / height; height = MAX_SIZE; }
+           }
+           canvas.width = width; canvas.height = height;
+           const ctx = canvas.getContext('2d');
+           ctx.drawImage(img, 0, 0, width, height);
+           const dataUrl = canvas.toDataURL('image/png'); // Konversi ke Base64 (PNG untuk transparansi)
+           
+           document.getElementById(previewId).src = dataUrl;
+           document.getElementById(previewId).style.display = 'block';
+           if (textId) document.getElementById(textId).style.display = 'none';
+           input.dataset.base64 = dataUrl; // Simpan data base64 ke elemen
+        };
+        img.src = e.target.result;
+     };
+     reader.readAsDataURL(input.files[0]);
+  }
+}
+
 function renderProfile() {
   setRoute('profile', 'Profil guru & sekolah');
   
   $('#content').innerHTML = `
-    <style>
-      input[type="password"]::-ms-reveal,
-      input[type="password"]::-ms-clear {
-        display: none !important;
-      }
-    </style>
+    <style>input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none !important; }</style>
     <div class="stack">
     ${pageHead('Profil Anda', 'Perbarui informasi pribadi dan instansi tempat Anda mengajar.')}
     
@@ -2520,41 +2619,47 @@ function renderProfile() {
       <div class="form-grid">
         ${field('name', 'Nama lengkap', state.user.name, {required: true, max: 100})}
         ${field('school', 'Nama instansi/sekolah', state.user.school, {required: true, max: 150})}
-        
-        <!-- TAMBAHKAN KOLOM INI AGAR GURU BISA MENGISI WILAYAH/KABUPATEN -->
         ${field('region', 'Wilayah / Pemerintah Daerah', state.user.region || '', {max: 150, placeholder: 'Contoh: PEMERINTAH KABUPATEN BANGKALAN'})}
-        
         ${field('address', 'Alamat instansi/sekolah', state.user.address || '', {max: 200, placeholder: 'Contoh: Jl. Pendidikan No. 7, Bangkalan'})}
         ${field('phone', 'No. Kontak / Telepon', state.user.phone || '', {max: 30, placeholder: 'Contoh: 087846666636'})}
       </div>
+
+      <h2 style="margin-top: 32px;">Logo Instansi (Kop Surat)</h2>
+      <div class="notice">Unggah logo resmi (format PNG transparan disarankan) untuk Kop Surat dokumen PDF/Word. Anda bebas mengisi salah satu saja atau keduanya.</div>
+      <div class="form-grid">
+        <!-- Logo KIRI -->
+        <div style="border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--surface-alt);">
+          <label style="font-size: 13px; font-weight: 650; display: block; margin-bottom: 8px;">Logo Kiri (Opsional - Cth: Logo Pemkab)</label>
+          <input type="file" id="upload-logo-left" accept="image/png, image/jpeg, image/webp" onchange="previewLogo(this, 'preview-left', 'text-left')" style="width: 100%; font-size: 12px; margin-bottom: 12px;">
+          <div style="height: 100px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; background: white; border-radius: 8px;">
+             <img id="preview-left" src="${state.user.logoLeft === '' ? '' : (state.user.logoLeft || './asset/logo.png')}" style="max-height: 80px; max-width: 100%; object-fit: contain; display: ${state.user.logoLeft === '' ? 'none' : 'block'};">
+             <span id="text-left" style="color: #94a3b8; font-size: 12px; display: ${state.user.logoLeft === '' ? 'block' : 'none'};">Belum ada logo</span>
+          </div>
+          <button type="button" onclick="document.getElementById('preview-left').style.display='none'; document.getElementById('text-left').style.display='block'; document.getElementById('upload-logo-left').dataset.base64='delete';" style="margin-top: 8px; color: #ef4444; background: none; border: none; font-size: 12px; cursor: pointer; padding: 0;">Hapus Logo Kiri</button>
+        </div>
+        
+        <!-- Logo KANAN -->
+        <div style="border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--surface-alt);">
+          <label style="font-size: 13px; font-weight: 650; display: block; margin-bottom: 8px;">Logo Kanan (Opsional - Cth: Logo Sekolah)</label>
+          <input type="file" id="upload-logo-right" accept="image/png, image/jpeg, image/webp" onchange="previewLogo(this, 'preview-right', 'text-right')" style="width: 100%; font-size: 12px; margin-bottom: 12px;">
+          <div style="height: 100px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; background: white; border-radius: 8px;">
+             <img id="preview-right" src="${state.user.logoRight || ''}" style="max-height: 80px; max-width: 100%; object-fit: contain; display: ${state.user.logoRight ? 'block' : 'none'};">
+             <span id="text-right" style="color: #94a3b8; font-size: 12px; display: ${state.user.logoRight ? 'none' : 'block'};">Belum ada logo</span>
+          </div>
+          <button type="button" onclick="document.getElementById('preview-right').style.display='none'; document.getElementById('text-right').style.display='block'; document.getElementById('upload-logo-right').dataset.base64='delete';" style="margin-top: 8px; color: #ef4444; background: none; border: none; font-size: 12px; cursor: pointer; padding: 0;">Hapus Logo Kanan</button>
+        </div>
+      </div>
       
-<h2 style="margin-top: 32px;">Keamanan Akun</h2>
+      <h2 style="margin-top: 32px;">Keamanan Akun</h2>
       <div class="notice">Kosongkan kolom sandi jika tidak ingin menggantinya. Email tidak dapat diubah.</div>
-      
-      <!-- TRIK DECOY: Umpan tersembunyi agar Chrome tidak nyasar mengisi email ke kolom Mata Pelajaran -->
       <input type="text" name="fake_username_decoy" style="display: none;" aria-hidden="true" autocomplete="username">
-      
       <div class="form-grid">
         <label class="field">
           <span>Kata sandi baru</span>
           <div style="position: relative; display: flex; align-items: center;">
-            <!-- Tambahkan autocomplete="new-password" pada input sandi ini -->
             <input id="profile-password" name="newPassword" type="password" autocomplete="new-password" minlength="6" placeholder="Minimal 6 karakter" style="width: 100%; padding-right: 40px; box-sizing: border-box;">
-            <button type="button" tabindex="-1" onclick="
-              const pwd = document.getElementById('profile-password');
-              if (pwd.type === 'password') { 
-                pwd.type = 'text'; 
-                this.innerHTML = '<svg width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22\\'></path></svg>';
-              } else { 
-                pwd.type = 'password'; 
-                this.innerHTML = '<svg width=\\'20\\' height=\\'20\\' viewBox=\\'0 0 24 24\\' fill=\\'none\\' stroke=\\'currentColor\\' stroke-width=\\'2\\' stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\'><path d=\\'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z\\'></path><circle cx=\\'12\\' cy=\\'12\\' r=\\'3\\'></circle></svg>';
-              }
-            " style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: #666; padding: 0; display: flex; align-items: center; justify-content: center;">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-            </button>
           </div>
         </label>
-        
         ${field('email', 'Email akun', state.user.email, {disabled: true})}
       </div>
       
@@ -2574,27 +2679,46 @@ async function saveProfile(form) {
     return;
   }
 
+  // Tangkap gambar yang diunggah
+  const leftInput = document.getElementById('upload-logo-left');
+  const rightInput = document.getElementById('upload-logo-right');
+  
+  let finalLogoLeft = state.user.logoLeft;
+  if (leftInput && leftInput.dataset.base64) {
+      finalLogoLeft = leftInput.dataset.base64 === 'delete' ? '' : leftInput.dataset.base64;
+  }
+  
+  let finalLogoRight = state.user.logoRight;
+  if (rightInput && rightInput.dataset.base64) {
+      finalLogoRight = rightInput.dataset.base64 === 'delete' ? '' : rightInput.dataset.base64;
+  }
+
   await run(async () => {
     await api('updateProfile', { 
       email: state.user.email, 
       name: values.name, 
       school: values.school, 
-      region: values.region, // <--- Mengirim data region
+      region: values.region,
       address: values.address,
       phone: values.phone,
-      newPassword: values.newPassword 
+      newPassword: values.newPassword,
+      logoLeft: finalLogoLeft || '',
+      logoRight: finalLogoRight || ''
     });
     
+    // Perbarui state memori browser
     state.user.name = values.name;
     state.user.school = values.school;
-    state.user.region = values.region; // <--- Memperbarui state lokal
+    state.user.region = values.region;
     state.user.address = values.address;
     state.user.phone = values.phone;
+    state.user.logoLeft = finalLogoLeft || '';
+    state.user.logoRight = finalLogoRight || '';
     
     const userLabelSpan = document.querySelector('.user-label span');
     if (userLabelSpan) userLabelSpan.textContent = values.name;
 
-    showToast('Profil berhasil diperbarui!');
+    showToast('Profil dan Logo berhasil diperbarui!');
     form.elements.newPassword.value = '';
     
   }, 'Menyimpan profil...');
