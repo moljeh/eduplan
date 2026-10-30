@@ -278,33 +278,29 @@ function setBusy(isBusy, message = 'Memproses...') {
   state.busy = isBusy;
   let overlay = document.getElementById('busy-overlay');
   
-  // 1. Buat wadah overlay jika belum ada
   if (!overlay) {
     overlay = document.createElement('div');
     overlay.id = 'busy-overlay';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999;';
+    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.65); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 9999;';
     document.body.appendChild(overlay);
   }
 
-  // 2. JIKA LOADING DIMULAI
   if (isBusy) {
-    // Deteksi cerdas: Apakah ini proses pembuatan dokumen AI?
     const textLower = message.toLowerCase();
     const isGenerating = textLower.includes('menyusun dokumen') || textLower.includes('generate');
 
     if (isGenerating) {
-      // MODE A: LOADING PERSENTASE (Khusus 40 Menu Dokumen)
       overlay.innerHTML = `
-        <div style="background: white; padding: 32px 24px; border-radius: 16px; text-align: center; width: 90%; max-width: 340px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
-          <div style="margin-bottom: 20px; font-size: 0.95rem; font-weight: 600; color: #1e293b; line-height: 1.4;">${message}</div>
-          <div style="background: #e2e8f0; border-radius: 99px; height: 8px; width: 100%; overflow: hidden; margin-bottom: 10px;">
-            <div id="busy-progress-bar" style="background: var(--primary-color, #4f46e5); width: 0%; height: 100%; transition: width 0.4s ease-out; border-radius: 99px;"></div>
+        <div style="background: var(--surface, #ffffff); border: 1px solid var(--line, #e2e8f0); padding: 32px 24px; border-radius: 16px; text-align: center; width: 90%; max-width: 340px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25);">
+          <div style="margin-bottom: 20px; font-size: 0.95rem; font-weight: 600; color: var(--text, #1e293b); line-height: 1.4;">${escapeHTML(message)}</div>
+          <div style="background: var(--line, #e2e8f0); border-radius: 99px; height: 8px; width: 100%; overflow: hidden; margin-bottom: 10px;">
+            <div id="busy-progress-bar" style="background: var(--primary, #6254dc); width: 0%; height: 100%; transition: width 0.4s ease-out; border-radius: 99px;"></div>
           </div>
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-             <div id="busy-progress-text" style="font-size: 0.875rem; font-weight: bold; color: var(--primary-color, #4f46e5);">0%</div>
-             <div id="busy-progress-status" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Memulai AI...</div>
+             <div id="busy-progress-text" style="font-size: 0.875rem; font-weight: bold; color: var(--primary, #6254dc);">0%</div>
+             <div id="busy-progress-status" style="font-size: 0.75rem; color: var(--muted, #64748b); font-weight: 500;">Memulai AI...</div>
           </div>
-          <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 16px;">Mohon tunggu dan jangan mengirim ulang permintaan.</div>
+          <div style="font-size: 0.7rem; color: var(--muted, #94a3b8); margin-top: 16px;">Mohon tunggu dan jangan mengirim ulang permintaan.</div>
         </div>
       `;
       
@@ -334,36 +330,32 @@ function setBusy(isBusy, message = 'Memproses...') {
       }, 600);
 
     } else {
-      // MODE B: LOADING SPINNER BIASA (Untuk Login, Admin, Hapus, dll)
       if (progressInterval) clearInterval(progressInterval);
       overlay.innerHTML = `
-        <div style="background: white; padding: 24px 32px; border-radius: 12px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+        <div style="background: var(--surface, #ffffff); border: 1px solid var(--line, #e2e8f0); padding: 24px 32px; border-radius: 16px; text-align: center; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.25);">
           <style>
             @keyframes edu-spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-            .edu-spinner { width: 36px; height: 36px; border: 4px solid #e0e7ff; border-top: 4px solid var(--primary-color, #4f46e5); border-radius: 50%; animation: edu-spin 1s linear infinite; margin-bottom: 16px; }
+            .edu-spinner { width: 36px; height: 36px; border: 4px solid var(--line, #e0e7ff); border-top: 4px solid var(--primary, #6254dc); border-radius: 50%; animation: edu-spin 1s linear infinite; margin-bottom: 16px; }
           </style>
           <div class="edu-spinner"></div>
-          <div style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">${message}</div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: var(--text, #1e293b);">${escapeHTML(message)}</div>
         </div>
       `;
     }
     overlay.style.display = 'flex';
     
-  // 3. JIKA LOADING SELESAI
   } else {
     const bar = document.getElementById('busy-progress-bar');
     const text = document.getElementById('busy-progress-text');
     const status = document.getElementById('busy-progress-status');
     
     if (bar && text && status) {
-      // Jika mode persentase, selesaikan ke 100% dulu sebelum ditutup
       if (progressInterval) clearInterval(progressInterval);
       bar.style.width = '100%';
       text.textContent = '100%';
       status.textContent = 'Selesai!';
       setTimeout(() => { if (overlay) overlay.style.display = 'none'; }, 500);
     } else {
-      // Jika mode spinner biasa, langsung tutup tanpa jeda
       if (overlay) overlay.style.display = 'none';
     }
   }
@@ -646,6 +638,30 @@ async function api(action, params = {}) {
         
         return { text: rFullText };
 		
+		
+		
+		
+case 'generateImage':
+        // Mengamankan prompt dengan menyaring karakter aneh atau spasi menjadi format URL yang valid
+        const safePrompt = String(params.prompt || '')
+          .trim()
+          .replace(/[\n\r]/g, ' ')
+          .replace(/\s+/g, ' ');
+
+        if (safePrompt.length < 5) {
+          throw new Error("Deskripsi gambar terlalu singkat untuk diproses AI.");
+        }
+
+        // Kita gunakan pola generator gambar acak unik (seed) berbasis waktu dan teks agar hasilnya selalu bervariasi dan segar
+        const randomSeed = Math.floor(Math.random() * 999999);
+        
+        // Memastikan karakter kurung di-encode agar tidak merusak format markdown gambar saat diekspor
+        const encodedPrompt = encodeURIComponent(safePrompt).replace(/\(/g, '%28').replace(/\)/g, '%29');
+        const imageGenerateUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&nologo=true&seed=${randomSeed}`;
+        
+        // Kembalikan URL langsung. URL ini dapat langsung dipasang ke draf Markdown.
+        return { imageUrl: imageGenerateUrl };
+		
 
       case 'generate':
         const genProvRef = doc(db, "Providers", params.provider || 'gemini');
@@ -818,6 +834,12 @@ case 'updateProfile':
         const userDocRef = params.id ? doc(db, "Users", params.id) : doc(collection(db, "Users"));
         const newUserData = { email: params.email, name: params.name, school: params.school || '', role: params.role, active: params.active };
         await setDoc(userDocRef, newUserData, { merge: true });
+        return true;
+
+      case 'deleteUser':
+        const batchDelUser = writeBatch(db);
+        batchDelUser.delete(doc(db, "Users", params.id));
+        await batchDelUser.commit();
         return true;
 
       case 'saveSettings':
@@ -1149,26 +1171,37 @@ function renderShell() {
 
 
 
-// Fungsi mengambil total pengguna secara realtime untuk Topbar
+// Fungsi mengambil total pengguna dengan Cache Sesi (Hemat Kuota Firestore)
 async function fetchTopbarUserCount() {
+  const badge = document.getElementById('topbar-user-badge');
+  if (!badge) return;
+
+  const renderBadge = (count) => {
+    badge.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 
+      ${count} GURU AKTIF
+    `;
+  };
+
   try {
+    // Cek apakah sudah pernah dihitung di sesi ini
+    const cachedCount = sessionStorage.getItem('eduplan_active_users');
+    if (cachedCount) {
+      renderBadge(cachedCount);
+      return;
+    }
+
     const usersSnap = await getDocs(collection(db, 'Users'));
     let activeCount = 0;
     usersSnap.forEach(docSnap => {
       if (docSnap.data().active) activeCount++;
     });
     
-    const badge = document.getElementById('topbar-user-badge');
-    if (badge) {
-      badge.innerHTML = `
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 
-        ${activeCount} GURU AKTIF
-      `;
-    }
+    sessionStorage.setItem('eduplan_active_users', String(activeCount));
+    renderBadge(activeCount);
   } catch (error) {
     console.warn("Gagal memuat jumlah pengguna:", error);
-    const badge = document.getElementById('topbar-user-badge');
-    if (badge) badge.style.display = 'none'; // Sembunyikan jika error agar header tetap bersih
+    badge.style.display = 'none';
   }
 }
 
@@ -1747,6 +1780,7 @@ async function generate(form) {
     const provRef = doc(db, "Providers", params.provider || 'gemini');
     const provSnap = await getDoc(provRef);
     if (!provSnap.exists() || !provSnap.data().key) {
+       setBusy(false); // Hentikan loading sebelum memunculkan popup
        await window.Swal.fire('Sistem AI Belum Siap', 'API Key belum dikonfigurasi. Hubungi Admin.', 'error');
        return false;
     }
@@ -1758,10 +1792,12 @@ async function generate(form) {
     if (userSnap.exists()) {
       const data = userSnap.data();
       if ((data.tokenBalance || 0) < tokenCost) {
+        setBusy(false); // Hentikan loading sebelum memunculkan popup
         await window.Swal.fire('Saldo Tidak Mencukupi', `Pembuatan dokumen ini memerlukan ${tokenCost} token.\nSaldo Anda saat ini: ${(data.tokenBalance||0).toLocaleString('id-ID')}.\n\nSilakan klik tombol Beli / Top-Up di Dashboard.`, 'warning');
         return false; 
       }
     } else {
+      setBusy(false); // Hentikan loading sebelum memunculkan popup
       await window.Swal.fire('Akses Ditolak', 'Akun tidak ditemukan. Silakan login ulang.', 'error');
       return false;
     }
@@ -1867,6 +1903,7 @@ async function refineSelectedText() {
     if (userSnap.exists()) {
       const data = userSnap.data();
       if ((data.tokenBalance || 0) < tokenCost) {
+        setBusy(false); // Hentikan loading sebelum memunculkan popup
         await window.Swal.fire('Saldo Tidak Mencukupi', `Fitur perbaikan ini memerlukan ${tokenCost} token.\nSaldo Anda saat ini: ${(data.tokenBalance||0).toLocaleString('id-ID')}.`, 'warning');
         return false; 
       }
@@ -1922,6 +1959,62 @@ async function openDocument(id, isBack = false) {
   }, 'Membuka dokumen...');
 }
 
+function updateEditorStats() {
+  const el = document.getElementById('editor-text');
+  const statsEl = document.getElementById('editor-word-stats');
+  if (!el || !statsEl) return;
+  const text = el.value.trim();
+  const words = text ? text.split(/\s+/).length : 0;
+  const chars = el.value.length;
+  const pages = Math.max(1, Math.ceil(words / 350)); // Estimasi 1 halaman A4 = ~350 kata
+  statsEl.textContent = `${words.toLocaleString('id-ID')} kata · ${chars.toLocaleString('id-ID')} karakter · ~${pages} hal A4`;
+}
+
+window.insertEditorFormat = function(type) {
+  const textarea = document.getElementById('editor-text');
+  if (!textarea || textarea.disabled) return;
+
+  // 1. Kunci posisi gulir (scroll) layar dan halaman saat ini agar tidak loncat
+  const savedScrollTop = textarea.scrollTop;
+  const savedWindowScroll = window.scrollY;
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selected = textarea.value.substring(start, end);
+  let replacement = '';
+
+  // 2. Logika Toggle Pintar (Bisa pasang & lepas tanda bintang)
+  if (type === 'bold') {
+    if (selected.startsWith('**') && selected.endsWith('**') && selected.length > 4) {
+      replacement = selected.slice(2, -2); // Lepas tebal jika sudah tebal
+    } else {
+      replacement = `**${selected || 'teks tebal'}**`;
+    }
+  } else if (type === 'italic') {
+    if (selected.startsWith('*') && selected.endsWith('*') && !selected.startsWith('**') && selected.length > 2) {
+      replacement = selected.slice(1, -1); // Lepas miring jika sudah miring
+    } else {
+      replacement = `*${selected || 'teks miring'}*`;
+    }
+  } else if (type === 'heading') {
+    replacement = `\nA. ${(selected.replace(/^\*+|\*+$/g, '') || 'JUDUL BAGIAN').toUpperCase()}\n`;
+  } else if (type === 'table') {
+    replacement = `\n| No | Komponen | Deskripsi |\n|---|---|---|\n| 1 | Materi Pokok | Penjelasan singkat |\n| 2 | Evaluasi | Penjelasan singkat |\n`;
+  }
+
+  // 3. Gunakan setRangeText agar peramban TIDAK mereset posisi scroll ke bawah
+  textarea.focus({ preventScroll: true });
+  textarea.setRangeText(replacement, start, end, 'select');
+
+  // 4. Paksa kembalikan posisi scroll ke titik semula
+  textarea.scrollTop = savedScrollTop;
+  window.scrollTo(window.scrollX, savedWindowScroll);
+
+  state.dirty = true;
+  const statusEl = document.getElementById('editor-status');
+  if (statusEl) statusEl.textContent = 'Perubahan belum disimpan';
+  updateEditorStats();
+};
+
 function renderEditor() {
   setRoute('editor', 'Editor dokumen');
   const doc = state.editor.doc;
@@ -1934,22 +2027,21 @@ function renderEditor() {
      else displayProvider = 'EduPlan AI';
   }
   
-  
   $('#content').innerHTML = `<div class="stack">
     <div class="row between">
       <div><h1>Editor dokumen</h1><p class="muted mb-0">${escapeHTML(title(doc.type))} · ${escapeHTML(displayProvider)} · ${escapeHTML(doc.owner)}</p></div>
       ${button('← Riwayat', 'navigate', 'data-route="history"', 'btn-outline')}
     </div>
-    <div class="notice">Ekspor menggunakan teks sederhana. Tabel kompleks, kop surat, dan slide tidak diformat otomatis. Simpan perubahan sebelum menutup halaman.</div>
+    <div class="notice">Anda dapat menyunting draf di bawah ini sebelum mengunduhnya ke format PDF atau Microsoft Word (.doc).</div>
     <form class="card" data-form="save-document">
       ${field('title', 'Judul dokumen', doc.title, {required: true, max: 180})}
-     <div class="row mb-20">
+      <div class="row mb-20">
         <button class="btn btn-primary" type="submit">Simpan perubahan</button>
         ${button('Unduh PDF', 'export', 'data-format="pdf"')}
         ${button('Unduh Word', 'export', 'data-format="docx"')}
         ${button('Salin teks', 'copy', '', 'btn-outline')}
         
-       <!-- TOMBOL AI REFINE MELAYANG (FLOATING) -->
+        <!-- TOMBOL AI REFINE MELAYANG -->
         <button type="button" data-action="refine-selected" id="btn-refine-ai" style="display: none; position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); z-index: 9999; background: linear-gradient(135deg, #a855f7, #6366f1); color: white; border: none; box-shadow: 0 10px 25px rgba(99, 102, 241, 0.5); padding: 12px 24px; border-radius: 50px; font-size: 14px; font-weight: bold; align-items: center; gap: 8px; cursor: pointer; transition: transform 0.2s;">
            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"></path></svg>
            Perbaiki Teks AI
@@ -1957,11 +2049,28 @@ function renderEditor() {
 
         ${button('✦ Jadikan Rujukan AI', 'use-as-reference', 'title="Buat dokumen lanjutan dari isi ini"', 'btn-outline')}
       </div>
-      <label class="field"><span>Isi dokumen</span><textarea class="editor" name="text" id="editor-text" maxlength="150000"></textarea></label>
-      <div class="row between"><small id="editor-status" class="muted">Tersimpan · revisi ${doc.revision}</small><small class="muted">Maksimum 150.000 karakter</small></div>
+
+<!-- TOOLBAR FORMAT CEPAT -->
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: var(--surface-alt); border: 1px solid var(--line); border-bottom: none; border-radius: 10px 10px 0 0;">
+        <small class="muted" style="margin-right: 6px; font-weight: 600;">Format Cepat:</small>
+        <button type="button" class="btn btn-outline btn-small" onmousedown="event.preventDefault()" onclick="insertEditorFormat('bold')" title="Teks Tebal"><b>B</b> Tebal</button>
+        <button type="button" class="btn btn-outline btn-small" onmousedown="event.preventDefault()" onclick="insertEditorFormat('italic')" title="Teks Miring"><i>I</i> Miring</button>
+        <button type="button" class="btn btn-outline btn-small" onmousedown="event.preventDefault()" onclick="insertEditorFormat('heading')" title="Subjudul Baru">H Judul Bagian</button>
+        <button type="button" class="btn btn-outline btn-small" onmousedown="event.preventDefault()" onclick="insertEditorFormat('table')" title="Sisipkan Tabel">+ Tabel</button>
+        <button type="button" class="btn btn-outline btn-small" onmousedown="event.preventDefault()" onclick="triggerAIImage()" title="Buat Gambar Ilustrasi dengan AI" style="background: linear-gradient(135deg, #eeebff, #e0e7ff); color: var(--primary); border-color: var(--primary);">🏞️ Gambar AI</button>
+      </div>
+
+      <label class="field" style="margin-top: 0;">
+        <textarea class="editor" name="text" id="editor-text" maxlength="150000" style="border-top-left-radius: 0; border-top-right-radius: 0;"></textarea>
+      </label>
+      <div class="row between">
+        <small id="editor-status" class="muted">Tersimpan · revisi ${doc.revision}</small>
+        <small id="editor-word-stats" class="muted">0 kata · 0 karakter · ~1 hal A4</small>
+      </div>
     </form>
   </div>`;
   $('#editor-text').value = state.editor.text;
+  updateEditorStats();
 }
 
 function editorValues() {
@@ -2032,33 +2141,30 @@ async function exportDocument(format) {
     }
 
     const finalLogo = format === 'pdf' ? logoBase64 : logoUrl;
-	
-// Pengambilan data profil secara dinamis
+    
     const schoolName = escapeHTML(state.user.school || 'EDUPLAN AI'); 
     const schoolRegion = escapeHTML(state.user.region || 'PEMERINTAH PROVINSI / KABUPATEN'); 
     const schoolAddress = escapeHTML(state.user.address || 'Jalan Pendidikan No. 7, Bangkalan, Madura 69155');
     const schoolPhone = escapeHTML(state.user.phone || '087846666636');
     const userEmail = escapeHTML(state.user.email || 'admin@eduplanai.com');
 
-    // Menyiapkan Logo dari database profil. Jika user sengaja menghapus (kosong), biarkan kosong.
     let logoLeftUrl = '';
     if (state.user.logoLeft === '') {
-        logoLeftUrl = ''; // Sengaja dikosongkan oleh guru
+        logoLeftUrl = ''; 
     } else if (state.user.logoLeft) {
-        logoLeftUrl = state.user.logoLeft; // Menggunakan logo unggahan guru
+        logoLeftUrl = state.user.logoLeft; 
     } else {
-        logoLeftUrl = window.location.origin + '/asset/logo.png'; // Logo bawaan default jika belum pernah setting
+        logoLeftUrl = finalLogo; 
     }
     
     const logoRightUrl = state.user.logoRight || '';
 
-    // Kalkulasi lebar Kop Surat dinamis agar tulisan di tengah tetap simetris
     let textWidth = 100;
     let logoLeftHtml = '';
     let logoRightHtml = '';
 
     if (logoLeftUrl) {
-      textWidth -= 15; // Kurangi lebar teks 15% untuk tempat logo kiri
+      textWidth -= 15; 
       logoLeftHtml = `
         <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none; padding: 0;">
           <img src="${logoLeftUrl}" width="90" height="90" alt="Logo Kiri" style="width: 90px; height: 90px; object-fit: contain; display: block; margin: 0 auto;">
@@ -2066,14 +2172,13 @@ async function exportDocument(format) {
     }
 
     if (logoRightUrl) {
-      textWidth -= 15; // Kurangi lebar teks 15% lagi untuk tempat logo kanan
+      textWidth -= 15; 
       logoRightHtml = `
         <td width="15%" style="width: 15%; text-align: center; vertical-align: middle; border: none; padding: 0;">
           <img src="${logoRightUrl}" width="90" height="90" alt="Logo Kanan" style="width: 90px; height: 90px; object-fit: contain; display: block; margin: 0 auto;">
         </td>`;
     }
 
-    // Deklarasi tunggal kopSurat Cerdas dengan penimpaan text-align
     const kopSurat = `
       <table width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; margin-bottom: 0px; border-collapse: collapse; border: none;">
         <tr>
@@ -2086,8 +2191,8 @@ async function exportDocument(format) {
         </tr>
       </table>
       
-      <div style="border-bottom: 3pt solid black; margin-top: 10px; margin-bottom: 2px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
-      <div style="border-bottom: 1pt solid black; margin-bottom: 20px; width: 100%; font-size: 0px; line-height: 0px;">&nbsp;</div>
+     <hr size="3" width="100%" color="black" style="border: 0; border-top: 3pt solid black; margin-top: 10px; margin-bottom: 2px;" />
+      <hr size="1" width="100%" color="black" style="border: 0; border-top: 1pt solid black; margin-top: 0; margin-bottom: 20px;" />
       
       <div style="text-align: center !important; margin-bottom: 20px;">
         <h2 style="margin: 0 0 5px 0; font-size: 14pt; font-family: 'Times New Roman', Times, serif; text-transform: uppercase; font-weight: bold; text-align: center !important;">${escapeHTML(docTitle)}</h2>
@@ -2103,7 +2208,17 @@ async function exportDocument(format) {
     let skipSignatureLines = false;
     let inKvTable = false; 
     let forcePageBreak = false; 
-    let contentCounter = 0; // <-- TAMBAHAN: Untuk mencegah halaman pertama kosong
+    let contentCounter = 0; 
+
+    // Helper untuk merender Markdown secara seragam termasuk Gambar di semua elemen
+    const formatMarkdown = (text) => {
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+        .replace(/\*(.*?)\*/g, '<i>$1</i>')
+        .replace(/!\[(.*?)\]\((.*?)\)/g, (match, alt, src) => {
+           return `<br><span style="display:block; text-align:center; margin:16px 0; page-break-inside:avoid;"><img src="${src.replace(/&amp;/g, '&')}" alt="${alt}" style="max-width:100%; max-height:280px; border:1px solid #ddd; padding:4px; border-radius:6px; background:#fff;"><br><span style="font-size:10pt; font-style:italic; color:#555;">Gambar: ${alt}</span></span>`;
+        });
+    };
 
     for (let row of rows) {
       let tRow = row.trim();
@@ -2120,10 +2235,10 @@ async function exportDocument(format) {
         }
       }
 
-if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
+      if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
         skipSignatureLines = true;
         forcePageBreak = true; 
-        contentCounter++; // Dihitung sebagai konten
+        contentCounter++; 
         const namaGuru = escapeHTML(state.user.name || '..................................................');
         
         htmlRows.push(`
@@ -2195,9 +2310,7 @@ if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
         }
 
         let rowHtml = '<tr>' + cells.map((c) => {
-          let cellContent = escapeHTML(c.trim())
-            .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-            .replace(/\*(.*?)\*/g, '<i>$1</i>');
+          let cellContent = formatMarkdown(escapeHTML(c.trim()));
           if (!cellContent || cellContent === '---') cellContent = '&nbsp;';
           let tag = isHeaderRow ? 'th' : 'td';
           let style = tag === 'th' 
@@ -2212,7 +2325,7 @@ if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
         } else {
           htmlRows.push(rowHtml);
         }
-        contentCounter++; // Dihitung sebagai konten
+        contentCounter++; 
 
       } else {
         if (inTable) {
@@ -2223,14 +2336,12 @@ if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
         
        let cleanRow = tRow.replace(/^([#>\s]+)/g, '').trim(); 
         
-        // Terjemahkan kode matematika AI (LaTeX) menjadi simbol standar
-        cleanRow = cleanRow.replace(/\\times/gi, '×'); // kali
-        cleanRow = cleanRow.replace(/\\dots/gi, '...'); // titik-titik
-        cleanRow = cleanRow.replace(/\\div/gi, '÷'); // bagi
-        cleanRow = cleanRow.replace(/\\leq/gi, '≤'); // kurang dari sama dengan
-        cleanRow = cleanRow.replace(/\\geq/gi, '≥'); // lebih dari sama dengan
-        cleanRow = cleanRow.replace(/\\pm/gi, '±'); // plus-minus
-        
+        cleanRow = cleanRow.replace(/\\times/gi, '×'); 
+        cleanRow = cleanRow.replace(/\\dots/gi, '...'); 
+        cleanRow = cleanRow.replace(/\\div/gi, '÷'); 
+        cleanRow = cleanRow.replace(/\\leq/gi, '≤'); 
+        cleanRow = cleanRow.replace(/\\geq/gi, '≥'); 
+        cleanRow = cleanRow.replace(/\\pm/gi, '±'); 
         cleanRow = cleanRow.replace(/\\frac\{([^}]+)\}\{([^}]+)\}/g, '$1/$2');
         cleanRow = cleanRow.replace(/[\$\\]/g, '');
 
@@ -2248,11 +2359,9 @@ if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
                 `);
                 inKvTable = true;
             }
-			
+            
             let key = escapeHTML(kvMatch[1].trim());
-            let val = escapeHTML(kvMatch[2].trim())
-                .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-                .replace(/\*(.*?)\*/g, '<i>$1</i>');
+            let val = formatMarkdown(escapeHTML(kvMatch[2].trim()));
                 
             htmlRows.push(`
                       <tr>
@@ -2261,7 +2370,7 @@ if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
                         <td width="71%" style="width: 71%; padding: 2px 4px; border: none; font-size: 12pt; font-family: 'Times New Roman', Times, serif; vertical-align: top; text-align: justify; line-height: 1.5;">${val}</td>
                       </tr>
             `);
-            contentCounter++; // Dihitung sebagai konten
+            contentCounter++; 
             continue; 
         
         } else {
@@ -2290,46 +2399,43 @@ if (cleanTextForMatch.match(/^Mengetahui,?/i)) {
           let pageBreakHtml = '';
           
           if (isMandatoryNewPage) {
-            // PERBAIKAN UTAMA: Hanya buat halaman baru JIKA sudah ada konten sebelumnya
             if (contentCounter > 0) {
-                // Tambahkan spasi/margin ekstra setelah page-break agar judul tidak terpotong header printer
                 pageBreakHtml = '<div style="page-break-before: always; margin-top: 10px;"></div>';
             }
             forcePageBreak = false; 
           }
           
-          let formattedRow = escapeHTML(cleanRow).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
+          let formattedRow = formatMarkdown(escapeHTML(cleanRow));
           
-          // Pertegas ukuran font judul dan berikan margin atas yang layak
           htmlRows.push(`${pageBreakHtml}<h3 style="margin-top: 24px; margin-bottom: 12px; font-size: 13pt; font-weight: bold; font-family: 'Times New Roman', Times, serif; text-align: left; text-transform: uppercase;">${formattedRow}</h3>`);
-          contentCounter++; // Dihitung sebagai konten
+          contentCounter++; 
           
         } else if (listMatch) {
           let marker = listMatch[0].trim(); 
           if (marker === '-' || marker === '*') marker = '&#8226;'; 
           let rawListText = cleanRow.substring(listMatch[0].length).trim();
           rawListText = rawListText.replace(/^>\s*/, '');
-          let listText = escapeHTML(rawListText).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
+          let listText = formatMarkdown(escapeHTML(rawListText));
           
           htmlRows.push(`<div style="margin-left: 28px; text-indent: -28px; margin-bottom: 4px; text-align: justify; font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${marker}&nbsp;&nbsp;${listText}</div>`);
-          contentCounter++; // Dihitung sebagai konten
+          contentCounter++; 
           
         } else if (cleanRow === '') {
           htmlRows.push('<div style="height: 8px;"></div>');
         } else {
-          let formattedRow = escapeHTML(cleanRow).replace(/\*\*(.*?)\*\*/g, '<b>$1</b>').replace(/\*(.*?)\*/g, '<i>$1</i>');
+          let formattedRow = formatMarkdown(escapeHTML(cleanRow));
           let isAllCaps = cleanRow === cleanRow.toUpperCase() && cleanRow.match(/[A-Z]/);
           let pStyle = isAllCaps 
             ? 'margin-top: 12px; margin-bottom: 12px; text-align: center; font-weight: bold;'
             : 'margin-bottom: 6px; text-align: justify;'; 
           htmlRows.push(`<div style="${pStyle} font-size: 12pt; font-family: 'Times New Roman', Times, serif; line-height: 1.5;">${formattedRow}</div>`);
-          contentCounter++; // Dihitung sebagai konten
+          contentCounter++; 
         }
       }
     }
     
-    if (inTable) htmlRows.push('</tbody></table>');
-    if (inKvTable) htmlRows.push('</table></div>'); 
+   if (inTable) htmlRows.push('</tbody></table>');
+    if (inKvTable) htmlRows.push('</table></td></tr></table>');
 
     const processedHTML = htmlRows.join('\n');
 
@@ -2360,7 +2466,6 @@ const finalHTML = `
         </xml>
         <![endif]-->
         <style>
-          /* 1. Pengaturan Dasar Halaman Kertas (A4 Standar) */
           @page { 
             size: A4; 
             margin: 2cm 2.5cm 2.5cm 2.5cm; 
@@ -2370,8 +2475,6 @@ const finalHTML = `
               font-size: 10pt;
             }
           }
-          
-          /* 2. Pemformatan Teks Global */
           body { 
             font-family: 'Times New Roman', Times, serif; 
             font-size: 12pt; 
@@ -2383,51 +2486,42 @@ const finalHTML = `
             text-rendering: optimizeLegibility;
             -webkit-font-smoothing: antialiased;
           }
-          
-          /* 3. Pengendalian Paragraf dan Judul (Heading) */
           p, div { 
             margin-bottom: 8px; 
             text-align: justify; 
-            orphans: 3; /* Mencegah teks yatim-piatu di ujung halaman */
+            orphans: 3; 
             widows: 3; 
           }
           h1, h2, h3, h4 {
-            page-break-after: avoid; /* Mencegah judul terpisah dari paragraf di bawahnya */
+            page-break-after: avoid; 
             margin-top: 18px;
             margin-bottom: 8px;
             line-height: 1.2;
           }
-          
-          /* 4. Pemformatan Tabel Profesional */
           table { 
-            width: 100% !important; /* Paksa memenuhi margin */
+            width: 100% !important; 
             border-collapse: collapse; 
             page-break-inside: auto; 
             margin-top: 12px;
             margin-bottom: 20px;
           }
           tr { 
-            page-break-inside: avoid; /* Mencegah baris tabel terpotong di tengah antar halaman */
+            page-break-inside: avoid; 
             page-break-after: auto; 
           }
           thead { display: table-header-group; }
           tfoot { display: table-footer-group; }
-          
           th, td {
             padding: 8px 10px;
             border: 1pt solid black;
-            vertical-align: top; /* Teks selalu rata atas pada tabel */
+            vertical-align: top; 
           }
-          
-          /* Rata tengah untuk Header Tabel */
           th {
-            background-color: #f2f2f2; /* Efek abu-abu lembut agar elegan di PDF */
+            background-color: #f2f2f2; 
             font-weight: bold;
             text-align: center !important; 
             vertical-align: middle;
           }
-
-          /* 5. Perbaikan Daftar (Lists / Bullets) */
           ul, ol {
             margin-top: 4px;
             margin-bottom: 12px;
@@ -2437,16 +2531,9 @@ const finalHTML = `
             margin-bottom: 4px;
             text-align: justify;
           }
-          
-          /* 6. Aturan Khusus Saat Dicetak (Ctrl+P / PDF) */
           @media print {
-            body { 
-              width: 100%;
-            }
-            .no-print { 
-              display: none !important; 
-            }
-            /* Hilangkan bayangan/border abu-abu tabel jika ada sisa rendering browser */
+            body { width: 100%; }
+            .no-print { display: none !important; }
             table { border-color: black; }
             th { -webkit-print-color-adjust: exact; color-adjust: exact; background-color: #f2f2f2 !important; }
           }
@@ -3093,10 +3180,12 @@ async function checkQuotaBeforeGenerate(userEmail) {
          usedToday = 0; 
       }
       if (usedToday >= dailyQuota) {
+         setBusy(false); // Hentikan loading sebelum memunculkan popup
          await window.Swal.fire('Batas Harian', 'Batas klik harian Anda sudah habis. Silakan coba besok.', 'warning');
          return false;
       }
       if (tokenBalance <= 0) {
+         setBusy(false); // Hentikan loading sebelum memunculkan popup
          await window.Swal.fire('Saldo Habis', 'Saldo token AI habis. Silakan hubungi admin untuk Top-Up.', 'error');
          return false;
       }
@@ -3143,13 +3232,36 @@ async function saveUser(form) {
   });
   if (!accepted) return;
   await run(async () => {
-    // Pada skema baru, pastikan id sama dengan email
     if(!values.id) values.id = values.email; 
     await api('saveUser', values);
     state.admin = await api('adminData');
     renderUsers();
     showToast(values.id ? 'Perubahan akun berhasil disimpan.' : 'Pengguna baru berhasil ditambahkan.');
   }, 'Menyimpan akun...');
+}
+
+// KODE BARU: Fungsi Hapus Akun oleh Admin
+async function deleteUser(id) {
+  if (id === state.user.email) {
+    EduNotify.toast('Anda tidak dapat menghapus akun Anda sendiri yang sedang aktif.', {type: 'warning'});
+    return;
+  }
+  const accepted = await EduNotify.ask({
+    title: 'Hapus akun pengguna?',
+    message: `Akun "${id}" akan dihapus dari database. Pengguna ini tidak akan bisa login lagi. Lanjutkan?`,
+    confirmText: 'Ya, Hapus Akun',
+    cancelText: 'Batal',
+    danger: true,
+    icon: '!'
+  });
+  if (!accepted) return;
+  await run(async () => {
+    await api('deleteUser', { id });
+    await api('logActivity', { action: 'Hapus Pengguna', target: id });
+    state.admin = await api('adminData');
+    renderUsers();
+    showToast(`Akun ${id} berhasil dihapus.`);
+  }, 'Menghapus akun pengguna...');
 }
 
 function renderSettings() {
@@ -3746,6 +3858,7 @@ async function onClick(event) {
     case 'refresh-documents': return navigate(state.route);
     case 'page': state.filters.page = Number(data.page); renderDocumentResults(); return;
     case 'edit-user': return editUser(data.id);
+    case 'delete-user': return deleteUser(data.id);
     case 'new-user': return renderUsers();
     case 'test-provider': return testProvider(data.id);
     case 'use-as-reference': 
@@ -3818,9 +3931,10 @@ function onSubmit(event) {
 function onInput(event) {
   const target = event.target;
   
-  if (target.closest('[data-form="save-document"]')) {
+if (target.closest('[data-form="save-document"]')) {
     state.dirty = true;
     $('#editor-status').textContent = 'Perubahan belum disimpan';
+    updateEditorStats();
   }
   if (target.id === 'type-search') {
     const query = target.value.toLowerCase();
@@ -4068,3 +4182,98 @@ function showProfilePopup() {
 }
 
 init();
+
+
+// Fungsi Popup Tutorial Pembuatan Gambar via Flow AI
+window.triggerAIImage = async function() {
+  const textarea = document.getElementById('editor-text');
+  if (!textarea || textarea.disabled) return;
+
+  // Sembunyikan tombol "Perbaiki Teks AI" agar tidak menutupi popup
+  const refineBtn = document.getElementById('btn-refine-ai');
+  if (refineBtn) {
+    refineBtn.style.display = 'none';
+  }
+
+  // 1. Ambil teks yang disorot oleh guru di editor
+  const startPos = textarea.selectionStart;
+  const endPos = textarea.selectionEnd;
+  let selectedText = textarea.value.substring(startPos, endPos)
+    .replace(/^[\*\(\[\s]+|[\*\)\]\s]+$/g, '')
+    .replace(/^Ilustrasi\s*:\s*/i, '')
+    .trim();
+
+  // Jika guru lupa menyorot teks, berikan contoh default
+  if (!selectedText) {
+    selectedText = "A circle divided into two equal halves, simple 2d vector";
+  }
+
+  // PERBAIKAN: Mencegah HP keluar dari aplikasi saat tombol 'back' ditekan
+  history.pushState({ popup: 'flowTutorial' }, '');
+  const closeOnBack = () => Swal.close();
+  window.addEventListener('popstate', closeOnBack);
+
+  // 2. Tampilkan Popup Modern & Tutorial
+  await Swal.fire({
+    title: 'Buat Ilustrasi Gambar 🎨',
+    html: `
+      <div style="text-align: left;">
+        <p style="font-size: 14px; color: #64748b; margin-bottom: 16px; line-height: 1.5;">
+          Untuk hasil gambar yang lebih maksimal, tanpa batas limit, dan bebas error, silakan buat ilustrasi Anda menggunakan platform <b>Flow</b>, lalu sisipkan ke dokumen secara manual.
+        </p>
+
+        <!-- KOTAK PROMPT & TOMBOL SALIN -->
+        <div style="background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 12px; padding: 16px; margin-bottom: 20px; position: relative;">
+          <div style="font-size: 12px; font-weight: 800; color: #475569; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Teks Instruksi (Prompt):</div>
+          
+          <div id="prompt-to-copy" style="font-family: ui-monospace, monospace; font-size: 13px; color: #1e293b; word-break: break-word; line-height: 1.5; margin-bottom: 12px; background: #fff; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px;">${selectedText}</div>
+          
+          <button onclick="navigator.clipboard.writeText(document.getElementById('prompt-to-copy').innerText); const btn = this; const oldText = btn.innerHTML; btn.innerHTML = '✅ Tersalin!'; setTimeout(() => btn.innerHTML = oldText, 2000);" style="padding: 8px 14px; font-size: 12px; font-weight: 700; background: #e0e7ff; color: #4f46e5; border: none; border-radius: 8px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: background 0.2s;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Salin Teks
+          </button>
+        </div>
+
+        <!-- KOTAK TUTORIAL / LANGKAH-LANGKAH -->
+        <div style="font-size: 13.5px; color: #334155; line-height: 1.6; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="font-weight: 800; margin-bottom: 10px; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Panduan Langkah:
+          </div>
+          <ol style="margin-top: 0; margin-bottom: 0; padding-left: 22px; color: #475569;">
+            <li style="margin-bottom: 8px;">Klik tombol <b>Salin Teks</b> di atas.</li>
+            <li style="margin-bottom: 8px;">Klik tombol <b>Buka Flow</b> di bawah.</li>
+            <li style="margin-bottom: 8px;">Tempel teks tadi di website Flow, lalu buat dan <b>Unduh Gambarnya</b>.</li>
+            <li style="margin-bottom: 8px;">Kembali ke EduPlan AI, pastikan Anda mengklik <b>Unduh Word</b>.</li>
+            <li>Buka file Word tersebut, masuk ke menu <i>Insert > Pictures</i> untuk memasukkan gambar.</li>
+          </ol>
+        </div>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#94a3b8',
+    confirmButtonText: 'Buka Flow <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; vertical-align:text-bottom; margin-left:4px;"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>',
+    cancelButtonText: 'Tutup',
+    width: '520px',
+    customClass: {
+      popup: 'modern-popup',
+      confirmButton: 'btn-primary'
+    },
+    willClose: () => {
+      // PERBAIKAN: Hapus event listener saat popup ditutup (baik manual atau lewat back)
+      window.removeEventListener('popstate', closeOnBack);
+      
+      // Jika popup ditutup manual (klik Tutup atau klik area luar popup), sesuaikan kembali riwayatnya
+      if (history.state && history.state.popup === 'flowTutorial') {
+        history.back();
+      }
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // 3. Mengarahkan pengguna ke web Flow saat tombol diklik
+      // Jangan lupa ganti URL di bawah ini dengan link aplikasi Flow yang sebenarnya
+      window.open('https://flow.google.com', '_blank'); 
+    }
+  });
+};
