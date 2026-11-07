@@ -1359,7 +1359,7 @@ function renderDashboard() {
 
 // --- FUNGSI BARU: Menampilkan Pilihan Paket Top-Up (Desain Modern) ---
 window.showTopUpOptions = async function(userEmail) {
-  const adminWhatsApp = '6287846666636'; // Ganti dengan nomor WhatsApp Admin
+  const adminWhatsApp = '6282333166659'; // Ganti dengan nomor WhatsApp Admin
 
   // KODE BARU: Mencegah HP keluar aplikasi saat back ditekan
   history.pushState({ popup: 'topup' }, '');
